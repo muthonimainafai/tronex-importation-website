@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock List - Tronex Car Importers</title>
+    <link rel="stylesheet" href="/css/stock-list.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-car"></i>
+                <a href="/">Tronex</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">Home</a></li>
+                <li><a href="/stock-list" class="nav-link active">Stock List</a></li>
+                <li><a href="/" class="nav-link">About</a></li>
+                <li><a href="/" class="nav-link">Contact</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <div class="hero-section">
+        <div class="hero-content">
+            <h1>Find Your Perfect Vehicle</h1>
+            <p>Browse our wide selection of quality used cars</p>
+        </div>
+    </div>
+
+    <!-- Search Section -->
+    <div class="search-section">
+        <div class="search-container">
+            <h2>Search by Details</h2>
+            <form id="searchForm" class="search-form">
+                <div class="search-row">
+                    <div class="search-field">
+                        <label for="make">Make</label>
+                        <select id="make" name="make">
+                            <option value="">Select Make</option>
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <label for="model">Model</label>
+                        <input type="text" id="model" name="model" placeholder="Enter model">
+                    </div>
+                    <div class="search-field">
+                        <label for="type">Body Type</label>
+                        <select id="type" name="type">
+                            <option value="">All Types</option>
+                            <option value="Sedan">Sedan</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Van">Van</option>
+                            <option value="Coupe">Coupe</option>
+                            <option value="Hatchback">Hatchback</option>
+                        </select>
+                    </div>
+                    <div class="search-field">
+                        <label for="yearFrom">Year From (Min: 2019)</label>
+                        <select id="yearFrom" name="yearFrom">
+                            <option value="">All Years</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="search-actions">
+                    <button type="submit" class="btn-search">
+                        <i class="fas fa-search"></i> Search Vehicles
+                    </button>
+                    <button type="reset" class="btn-reset">
+                        <i class="fas fa-redo"></i> Clear
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Left Sidebar - Makes -->
+        <aside class="sidebar-left">
+            <div class="sidebar-section">
+                <h3 class="sidebar-title">
+                    <i class="fas fa-filter"></i> Shop by Make
+                </h3>
+                <div class="makes-grid" id="makesGrid">
+                    <div class="loading-spinner">
+                        <div class="spinner"></div>
+                        <p>Loading makes...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Content - Cars List -->
+        <section class="content-right">
+            <!-- Results Header -->
+            <div class="results-header">
+                <div class="results-info">
+                    <h2>Available Vehicles</h2>
+                    <p>Showing <span id="resultCount">0</span> of <span id="totalCount">0</span> vehicles</p>
+                </div>
+                <div class="sort-container">
+                    <label for="sortBy">Sort By:</label>
+                    <select id="sortBy">
+                        <option value="newest">Newest First</option>
+                        <option value="price-low">Price: Low to High</option>
+                        <option value="price-high">Price: High to Low</option>
+                        <option value="name">Name: A to Z</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Cars Grid -->
+            <div class="cars-grid" id="carsGrid">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <p>Loading vehicles...</p>
+                </div>
+            </div>
+
+            <!-- No Results -->
+            <div class="no-results" id="noResults">
+                <i class="fas fa-search"></i>
+                <h3>No vehicles found</h3>
+                <p>Try adjusting your search criteria</p>
+                <button class="btn-reset-search" id="resetBtn">Reset Filters</button>
+            </div>
+        </section>
+    </div>
+
+    <!-- Car Details Modal -->
+    <div id="carModal" class="modal">
+        <div class="modal-wrapper">
+            <div class="modal-content">
+                <button class="close-modal">&times;</button>
+                
+                <div class="modal-grid">
+                    <!-- Left: Image & Status -->
+                    <div class="modal-left">
+                        <div class="modal-image">
+                            <div id="carImagePlaceholder" class="image-placeholder"></div>
+                            <span id="carBadge" class="badge"></span>
+                            <span id="carStatus" class="status-badge"></span>
+                        </div>
+                        <div class="modal-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-calendar-alt"></i>
+                                <div>
+                                    <label>Year</label>
+                                    <span id="modalYear"></span>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <div>
+                                    <label>Mileage</label>
+                                    <span id="modalMileage"></span>
+                                </div>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-gas-pump"></i>
+                                <div>
+                                    <label>Transmission</label>
+                                    <span id="modalTransmission"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Details -->
+                    <div class="modal-right">
+                        <h2 id="modalCarName"></h2>
+                        <p id="modalCarSubtitle" class="subtitle"></p>
+                        
+                        <div class="price-box">
+                            <span id="modalCarPrice" class="price"></span>
+                            <span id="modalStatusText" class="status-label"></span>
+                        </div>
+
+                        <div class="specifications">
+                            <h3>Full Specifications</h3>
+                            <div class="specs-list">
+                                <div class="spec-row">
+                                    <span class="spec-label">Type</span>
+                                    <span id="modalType" class="spec-value"></span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-label">Color</span>
+                                    <span id="modalColor" class="spec-value"></span>
+                                </div>
+                                <div class="spec-row">
+                                    <span class="spec-label">Status</span>
+                                    <span id="modalAvailability" class="spec-value"></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="description">
+                            <h3>Description</h3>
+                            <p id="modalDescription"></p>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button class="btn-contact">
+                                <i class="fas fa-phone"></i> Contact Seller
+                            </button>
+                            <button class="btn-inquire">
+                                <i class="fas fa-envelope"></i> Make Inquiry
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="footer-content">
+            <p>&copy; 2024 Tronex Car Importers. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script src="/js/stock-list.js"></script>
+</body>
+</html>

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Cars - Tronex Admin</title>
+    <link rel="stylesheet" href="/css/manage-cars.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="manage-cars-container">
+        <!-- Header -->
+        <div class="manage-header">
+            <div class="header-content">
+                <h1><i class="fas fa-car"></i> Manage Vehicles</h1>
+                <p>Add, edit, and manage your vehicle inventory</p>
+            </div>
+            <button class="btn-add-new" id="addNewBtn">
+                <i class="fas fa-plus-circle"></i> Add New Vehicle
+            </button>
+        </div>
+
+        <!-- Filters -->
+        <div class="filters-section">
+            <input type="text" id="searchInput" class="search-input" placeholder="🔍 Search by car name, make, or model...">
+            <select id="statusFilter" class="status-filter" title="Select status">
+                <option value="">All Status</option>
+                <option value="Available">Available</option>
+                <option value="Reserved">Reserved</option>
+                <option value="Sold">Sold</option>
+            </select>
+        </div>
+
+        <!-- Cars Table -->
+        <div class="cars-table-wrapper">
+            <table class="cars-table" id="carsTable">
+                <thead>
+                    <tr>
+                        <th>Car Name</th>
+                        <th>Make/Model</th>
+                        <th>Year</th>
+                        <th>Price</th>
+                        <th>Mileage</th>
+                        <th>Status</th>
+                        <th>Badge</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="carsTableBody">
+                    <tr class="loading-row">
+                        <td colspan="8">
+                            <div class="spinner"></div>
+                            Loading vehicles...
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-section">
+            <div class="stat-card">
+                <i class="fas fa-car"></i>
+                <div>
+                    <p>Total Vehicles</p>
+                    <h3 id="totalCars">0</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-check-circle"></i>
+                <div>
+                    <p>Available</p>
+                    <h3 id="availableCars">0</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-clock"></i>
+                <div>
+                    <p>Reserved</p>
+                    <h3 id="reservedCars">0</h3>
+                </div>
+            </div>
+            <div class="stat-card">
+                <i class="fas fa-ban"></i>
+                <div>
+                    <p>Sold</p>
+                    <h3 id="soldCars">0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Car Modal -->
+    <div id="carModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Vehicle</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+
+            <form id="carForm" class="car-form">
+                <input type="hidden" id="carId">
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="name">Car Name *</label>
+                        <input type="text" id="name" required placeholder="e.g., Toyota Camry Hybrid">
+                    </div>
+                    <div class="form-group">
+                        <label for="make">Make *</label>
+                        <input type="text" id="make" required placeholder="e.g., Toyota">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="model">Model *</label>
+                        <input type="text" id="model" required placeholder="e.g., Camry">
+                    </div>
+                    <div class="form-group">
+                        <label for="year">Year *</label>
+                        <input type="number" id="year" required placeholder="2024">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="price">Price ($) *</label>
+                        <input type="number" id="price" step="0.01" required placeholder="25000">
+                    </div>
+                    <div class="form-group">
+                        <label for="mileage">Mileage (km) *</label>
+                        <input type="number" id="mileage" required placeholder="45000">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="type">Type *</label>
+                        <select id="type" required>
+                            <option value="">Select Type</option>
+                            <option value="Sedan">Sedan</option>
+                            <option value="SUV">SUV</option>
+                            <option value="Truck">Truck</option>
+                            <option value="Van">Van</option>
+                            <option value="Coupe">Coupe</option>
+                            <option value="Hatchback">Hatchback</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="transmission">Transmission *</label>
+                        <select id="transmission" required>
+                            <option value="">Select Transmission</option>
+                            <option value="Automatic">Automatic</option>
+                            <option value="Manual">Manual</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="color">Color *</label>
+                        <input type="text" id="color" required placeholder="e.g., Silver">
+                    </div>
+                    <div class="form-group">
+                        <label for="availability">Status *</label>
+                        <select id="availability" required>
+                            <option value="">Select Status</option>
+                            <option value="Available">Available</option>
+                            <option value="Reserved">Reserved</option>
+                            <option value="Sold">Sold</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="badge">Badge</label>
+                        <select id="badge">
+                            <option value="Featured">Featured</option>
+                            <option value="New Arrival">New Arrival</option>
+                            <option value="Hot Deal">Hot Deal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group full">
+                    <label for="description">Description *</label>
+                    <textarea id="description" rows="4" required placeholder="Enter detailed car description..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="submit" class="btn-submit">
+                        <i class="fas fa-save"></i> Save Vehicle
+                    </button>
+                    <button type="reset" class="btn-reset">
+                        <i class="fas fa-redo"></i> Clear Form
+                    </button>
+                    <button type="button" class="btn-cancel" id="cancelBtn">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content small">
+            <div class="modal-header">
+                <h2>Confirm Delete</h2>
+                <button class="close-modal">&times;</button>
+            </div>
+            <p>Are you sure you want to delete this vehicle? This action cannot be undone.</p>
+            <div class="modal-actions">
+                <button class="btn-delete-confirm">Delete</button>
+                <button class="btn-cancel-delete">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="/js/manage-cars.js"></script>
+</body>
+</html>

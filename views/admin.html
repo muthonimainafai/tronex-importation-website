@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Tronex Car Importers</title>
+    <link rel="stylesheet" href="/css/admin.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-logo">
+                <i class="fas fa-car"></i>
+                <span>Tronex Admin</span>
+            </div>
+            <nav class="admin-nav">
+                <a href="javascript:void(0)" class="admin-nav-link active" data-section="dashboard">
+                    <i class="fas fa-chart-line"></i> Dashboard
+                </a>
+                <a href="/manage-cars" class="admin-nav-link">
+                    <i class="fas fa-list"></i> Manage Cars
+                </a>
+                <a href="javascript:void(0)" class="admin-nav-link" data-section="add-car">
+                    <i class="fas fa-plus-circle"></i> Add New Car
+                </a>
+                <a href="/" class="admin-nav-link">
+                    <i class="fas fa-arrow-left"></i> Back to Site
+                </a>
+                <a href="javascript:void(0)" class="admin-nav-link logout" id="logoutBtn">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-content">
+            <!-- Header -->
+            <div class="admin-header">
+                <h1>Tronex Admin Panel</h1>
+                <div class="admin-user">
+                    <i class="fas fa-user-circle"></i>
+                    <span>Administrator</span>
+                </div>
+            </div>
+
+            <!-- Dashboard Section -->
+            <section id="dashboard-section" class="admin-section active">
+                <h2>Dashboard</h2>
+                <div class="dashboard-cards">
+                    <div class="dashboard-card">
+                        <div class="card-content">
+                            <i class="fas fa-car"></i>
+                            <div>
+                                <p>Total Vehicles</p>
+                                <h3 id="totalCars">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-content">
+                            <i class="fas fa-star"></i>
+                            <div>
+                                <p>Featured Cars</p>
+                                <h3 id="featuredCars">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="dashboard-card">
+                        <div class="card-content">
+                            <i class="fas fa-fire"></i>
+                            <div>
+                                <p>New Arrivals</p>
+                                <h3 id="newArrivals">0</h3>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="dashboard-info">
+                    <p>Welcome to your admin dashboard! Use the navigation to manage vehicles.</p>
+                </div>
+            </section>
+
+            <!-- Manage Cars Section -->
+            <section id="cars-section" class="admin-section">
+                <h2>Manage Vehicles</h2>
+                <div class="section-actions">
+                    <button type="button" class="btn-add" onclick="addNewCarSection()">
+                        <i class="fas fa-plus"></i> Add New Vehicle
+                    </button>
+                </div>
+                <div class="admin-table-wrapper">
+                    <table class="admin-table" id="carsTable">
+                        <thead>
+                            <tr>
+                                <th>Car Name</th>
+                                <th>Make/Model</th>
+                                <th>Year</th>
+                                <th>Price</th>
+                                <th>Badge</th>
+                                <th>Availability</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="carsTableBody">
+                            <tr>
+                                <td colspan="6" class="loading-message">Loading vehicles...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Add/Edit Car Section -->
+            <section id="add-car-section" class="admin-section">
+                <h2 id="formTitle">Add New Vehicle</h2>
+                <form id="carForm" class="admin-form">
+                    <input type="hidden" id="carId">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="name">Car Name *</label>
+                            <input type="text" id="name" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="make">Make *</label>
+                            <input type="text" id="make" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="model">Model *</label>
+                            <input type="text" id="model" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="year">Year *</label>
+                            <input type="number" id="year" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="price">Price ($) *</label>
+                            <input type="number" id="price" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="mileage">Mileage (km) *</label>
+                            <input type="number" id="mileage" required>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="type">Type *</label>
+                            <select id="type" required>
+                                <option value="Sedan">Sedan</option>
+                                <option value="SUV">SUV</option>
+                                <option value="Truck">Truck</option>
+                                <option value="Van">Van</option>
+                                <option value="Coupe">Coupe</option>
+                                <option value="Hatchback">Hatchback</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="transmission">Transmission *</label>
+                            <select id="transmission" required>
+                                <option value="Automatic">Automatic</option>
+                                <option value="Manual">Manual</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="color">Color *</label>
+                            <input type="text" id="color" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="badge">Badge</label>
+                            <select id="badge">
+                                <option value="Featured">Featured</option>
+                                <option value="New Arrival">New Arrival</option>
+                                <option value="Hot Deal">Hot Deal</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="availability">Availability Status *</label>
+                            <select id="availability" required>
+                                <option value="Available">Available (Green)</option>
+                                <option value="Reserved">Reserved (Orange)</option>
+                                <option value="Sold">Sold (Gray)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group full">
+                        <label for="description">Description *</label>
+                        <textarea id="description" rows="4" required placeholder="Enter car description"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn-submit">Save Vehicle</button>
+                        <button type="reset" class="btn-reset">Clear Form</button>
+                        <button type="button" class="btn-cancel" id="cancelEdit">Cancel Edit</button>
+                    </div>
+                </form>
+            </section>
+        </main>
+    </div>
+
+    <script src="/js/admin.js"></script>
+</body>
+</html>

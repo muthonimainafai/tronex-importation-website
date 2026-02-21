@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tronex Car Importers Ltd - Premium Car Importation Services</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-logo">
+                <i class="fas fa-car-side"></i>
+                <span>Tronex Car Importers Ltd</span>
+            </div>
+            <ul class="nav-menu">
+                <li class="nav-item">
+                    <a href="/" class="nav-link active">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/about-us" class="nav-link">About Us</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/stock-list" class="nav-link active">Stock List</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/clearing-forwarding" class="nav-link">Clearing & Forwarding</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/vessel-schedule" class="nav-link">Vessel Schedule</a>
+                </li>
+                <li class="nav-item">
+                    <a href="/testimonials" class="nav-link">Testimonials</a>
+                </li>
+                <li class="nav-item">
+                    <a href="#" class="nav-link cart-icon" id="cartIcon">
+                        <i class="fas fa-shopping-cart"></i>
+                        <span class="cart-count" id="cartCount">0</span>
+                    </a>
+                </li>
+            </ul>
+            <div class="hamburger">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Shopping Cart Sidebar -->
+    <div class="cart-sidebar" id="cartSidebar">
+        <div class="cart-header">
+            <h2>Shopping Cart</h2>
+            <button class="close-cart" id="closeCart">&times;</button>
+        </div>
+        <div class="cart-items" id="cartItems">
+            <div class="empty-cart-message">
+                <i class="fas fa-shopping-cart"></i>
+  `              <p>Your cart is empty</p>
+            </div>
+        </div>
+        <div class="cart-footer">
+            <div class="cart-summary">
+                <div class="summary-row">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">$0.00</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tax (5%):</span>
+                    <span id="taxAmount">$0.00</span>
+                </div>
+                <div class="summary-row total">
+                    <span>Total:</span>
+                    <span id="totalAmount">$0.00</span>
+                </div>
+            </div>
+            <button class="btn-checkout" id="checkoutBtn" disabled>Proceed to Checkout</button>
+            <button class="btn-continue-shopping" id="continueShopping">Continue Shopping</button>
+        </div>
+    </div>
+
+    <!-- Cart Overlay -->
+    <div class="cart-overlay" id="cartOverlay"></div>
+
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-content">
+            <h1 class="hero-title">Drive Your Dreams Home</h1>
+            <p class="hero-subtitle">Tronex Car Importers Ltd - Premium quality vehicles worldwide at unbeatable prices</p>
+            <button class="cta-button">Explore Our Fleet</button>
+        </div>
+        <div class="hero-image">
+            <div class="car-icon-large">
+                <i class="fas fa-car"></i>
+            </div>
+        </div>
+    </section>
+
+    <!-- Search Panel Section -->
+    <section class="search-section">
+        <div class="search-container">
+            <h2>Find Your Perfect Car</h2>
+            <p>Search through our extensive inventory</p>
+            
+            <form class="search-form" id="searchForm">
+                <div class="search-group">
+                    <div class="search-field">
+                        <label for="make">
+                            <i class="fas fa-tag"></i> Car Make
+                        </label>
+                        <select id="make" name="make" required>
+                            <option value="">Select Make</option>
+                            <option value="Toyota">Toyota</option>
+                            <option value="Honda">Honda</option>
+                            <option value="BMW">BMW</option>
+                            <option value="Mercedes">Mercedes-Benz</option>
+                            <option value="Ford">Ford</option>
+                            <option value="Audi">Audi</option>
+                            <option value="Hyundai">Hyundai</option>
+                            <option value="Mazda">Mazda</option>
+                            <option value="Nissan">Nissan</option>
+                            <option value="Volkswagen">Volkswagen</option>
+                        </select>
+                    </div>
+
+                    <div class="search-field">
+                        <label for="model">
+                            <i class="fas fa-cube"></i> Car Model
+                        </label>
+                        <input type="text" id="model" name="model" placeholder="e.g., Camry, Civic, 3 Series" required>
+                    </div>
+
+                    <div class="search-field">
+                        <label for="year">
+                            <i class="fas fa-calendar"></i> Year of Registration
+                        </label>
+                        <select id="year" name="year" required>
+                            <option value="">Select Year</option>
+                            <option value="2026">2026</option>
+                            <option value="2025">2025</option>
+                            <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            <option value="2021">2021</option>
+                            <option value="2020">2020</option>
+                            <option value="2019">2019</option>
+                            <option value="2018">2018</option>
+                            <option value="2017">2017</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="search-button">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+
+    <!-- Featured Cars Section -->
+    <section id="stock-list" class="featured-cars">
+        <div class="cars-container">
+            <h2 class="section-title">Featured Vehicles in Stock</h2>
+            <p class="section-subtitle">Handpicked premium cars from around the world - Add to cart to purchase</p>
+
+            <div class="cars-grid" id="carsGrid">
+                <!-- Car 1 -->
+                <div class="car-card" data-car-id="1">
+                    <div class="car-image">
+                        <div class="car-placeholder">
+                            <i class="fas fa-car-side"></i>
+                        </div>
+                        <span class="car-badge-featured">Featured</span>
+                        <span class="car-price">$18,500</span>
+                    </div>
+                    <div class="car-details">
+                        <h3>Toyota Corolla 2023</h3>
+                        <p class="car-subtitle">Sedan • Premium Quality</p>
+                        <div class="car-specs">
+                            <div class="spec">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>2023</span>
+                            </div>
+                            <div class="spec">
+                                <i class="fas fa-tachometer-alt"></i>
+                                <span>15,000 km</span>
+                            </div>
+                            <div class="spec">
+                                <i class="fas fa-gas-pump"></i>
+                                <span>Automatic</span>
+                            </div>
+                            <div class="spec">
+                                <i class="fas fa-palette"></i>
+                                <span>Silver</span>
+                            </div>
+                        </div>
+                        <div class="car-description">
+                            Fuel-efficient sedan with modern features, excellent condition, full service history included.
+                        </div>
+                        <div class="car-actions">
+                            <button class="btn-details">View Details</button>
+                            <button class="btn-add-to-cart" data-price="18500" data-name="Toyota Corolla 2023">
+                                <i class="fas fa-shopping-cart"></i> Buy Now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+         <!-- Car 2 -->
+<div class="car-card" data-car-id="2">
+    <div class="car-image">
+        <div class="car-placeholder car-placeholder-2">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <span class="car-badge-new">New Arrival</span>
+        <span class="car-price">$32,000</span>
+    </div>
+    <div class="car-details">
+        <h3>Ford F-150 2022</h3>
+        <p class="car-subtitle">Pickup Truck • Heavy Duty</p>
+        <div class="car-specs">
+            <div class="spec">
+                <i class="fas fa-calendar-alt"></i>
+                <span>2022</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>22,000 km</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-gas-pump"></i>
+                <span>Manual</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-palette"></i>
+                <span>Black</span>
+            </div>
+        </div>
+        <div class="car-description">
+            Powerful pickup truck with towing capacity, perfect for commercial and personal use.
+        </div>
+        <div class="car-actions">
+            <button class="btn-details">View Details</button>
+            <button class="btn-add-to-cart" data-price="32000" data-name="Ford F-150 2022">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Car 3 -->
+<div class="car-card" data-car-id="3">
+    <div class="car-image">
+        <div class="car-placeholder car-placeholder-3">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <span class="car-badge-featured">Featured</span>
+        <span class="car-price">$45,000</span>
+    </div>
+    <div class="car-details">
+        <h3>BMW 3 Series 2023</h3>
+        <p class="car-subtitle">Luxury Sedan • Executive Class</p>
+        <div class="car-specs">
+            <div class="spec">
+                <i class="fas fa-calendar-alt"></i>
+                <span>2023</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>8,000 km</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-gas-pump"></i>
+                <span>Automatic</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-palette"></i>
+                <span>White</span>
+            </div>
+        </div>
+        <div class="car-description">
+            Luxury sedan with premium features, advanced technology, and exceptional performance.
+        </div>
+        <div class="car-actions">
+            <button class="btn-details">View Details</button>
+            <button class="btn-add-to-cart" data-price="45000" data-name="BMW 3 Series 2023">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Car 4 -->
+<div class="car-card" data-car-id="4">
+    <div class="car-image">
+        <div class="car-placeholder car-placeholder-4">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <span class="car-badge-new">New Arrival</span>
+        <span class="car-price">$28,500</span>
+    </div>
+    <div class="car-details">
+        <h3>Hyundai Elantra 2024</h3>
+        <p class="car-subtitle">Sedan • Economy Class</p>
+        <div class="car-specs">
+            <div class="spec">
+                <i class="fas fa-calendar-alt"></i>
+                <span>2024</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>5,000 km</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-gas-pump"></i>
+                <span>Automatic</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-palette"></i>
+                <span>Red</span>
+            </div>
+        </div>
+        <div class="car-description">
+            Brand new model with warranty, great fuel economy, and modern safety features.
+        </div>
+        <div class="car-actions">
+            <button class="btn-details">View Details</button>
+            <button class="btn-add-to-cart" data-price="28500" data-name="Hyundai Elantra 2024">
+                <i class="fas fa-shopping-cart"></i> Add to Cart
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Car 5 -->
+<div class="car-card" data-car-id="5">
+    <div class="car-image">
+        <div class="car-placeholder car-placeholder-5">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <span class="car-badge-featured">Featured</span>
+        <span class="car-price">$52,000</span>
+    </div>
+    <div class="car-details">
+        <h3>Mercedes-Benz C-Class 2023</h3>
+        <p class="car-subtitle">Luxury Sedan • Premium Edition</p>
+        <div class="car-specs">
+            <div class="spec">
+                <i class="fas fa-calendar-alt"></i>
+                <span>2023</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>10,000 km</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-gas-pump"></i>
+                <span>Automatic</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-palette"></i>
+                <span>Black</span>
+            </div>
+        </div>
+        <div class="car-description">
+            Top-tier luxury with premium leather interior, panoramic sunroof, and cutting-edge technology.
+        </div>
+        <div class="car-actions">
+            <button class="btn-details">View Details</button>
+            <button class="btn-add-to-cart" data-price="52000" data-name="Mercedes-Benz C-Class 2023">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Car 6 -->
+<div class="car-card" data-car-id="6">
+    <div class="car-image">
+        <div class="car-placeholder car-placeholder-6">
+            <i class="fas fa-car-side"></i>
+        </div>
+        <span class="car-badge-new">New Arrival</span>
+        <span class="car-price">$24,000</span>
+    </div>
+    <div class="car-details">
+        <h3>Honda Civic 2023</h3>
+        <p class="car-subtitle">Sedan • Reliability Plus</p>
+        <div class="car-specs">
+            <div class="spec">
+                <i class="fas fa-calendar-alt"></i>
+                <span>2023</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>18,000 km</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-gas-pump"></i>
+                <span>Automatic</span>
+            </div>
+            <div class="spec">
+                <i class="fas fa-palette"></i>
+                <span>Blue</span>
+            </div>
+        </div>
+        <div class="car-description">
+            Reliable sedan known for durability, excellent resale value, and outstanding performance.
+        </div>
+        <div class="car-actions">
+            <button class="btn-details">View Details</button>
+            <button class="btn-add-to-cart" data-price="24000" data-name="Honda Civic 2023">
+                <i class="fas fa-shopping-cart"></i> Buy Now
+            </button>
+        </div>
+    </div>
+</div>
+
+            <div class="view-more">
+                <a href="/stock-list" class="btn-primary-large">View All Vehicles</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Choose Us Section -->
+    <section class="why-choose-us">
+        <div class="why-container">
+            <h2 class="section-title">Why Choose Tronex Car Importers?</h2>
+            <p class="section-subtitle">Industry-leading service and quality</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <h3>Global Selection</h3>
+                    <p>Access to the finest imported vehicles from around the world, carefully selected for quality and value.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Quality Assurance</h3>
+                    <p>Every vehicle undergoes thorough inspection and testing to ensure it meets our high standards.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <h3>Complete Documentation</h3>
+                    <p>We handle all import paperwork, customs clearance, and regulatory compliance for your peace of mind.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-handshake"></i>
+                    </div>
+                    <h3>Expert Support</h3>
+                    <p>Our experienced team guides you through every step of the purchase process with professional service.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-truck"></i>
+                    </div>
+                    <h3>Reliable Shipping</h3>
+                    <p>Safe and secure delivery with real-time tracking. We ensure your vehicle arrives in perfect condition.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                    <h3>Competitive Pricing</h3>
+                    <p>Unbeatable prices without compromising on quality. Flexible payment options available.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Call to Action Section -->
+    <section class="cta-section">
+        <div class="cta-content">
+            <h2>Ready to Find Your Perfect Car?</h2>
+            <p>Browse our full inventory or contact our team for personalized assistance</p>
+            <div class="cta-buttons">
+                <a href="/stock-list" class="cta-btn cta-btn-primary">View All Vehicles</a>
+                <a href="#" class="cta-btn cta-btn-secondary">Contact Us</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <!-- Footer -->
+<footer class="footer">
+    <div class="footer-content">
+        <div class="footer-section">
+            <h3>Tronex Car Importers Ltd </h3>
+            <p>Your trusted partner in importing premium quality vehicles worldwide.</p>
+            <div class="social-links">
+                <a href="https://facebook.com/tronexcars" title="Facebook" aria-label="Visit our Facebook page">
+                    <i class="fab fa-facebook"></i>
+                </a>
+                <a href="https://twitter.com/tronexcars" title="Twitter" aria-label="Visit our Twitter page">
+                    <i class="fab fa-twitter"></i>
+                </a>
+                <a href="https://instagram.com/tronexcars" title="Instagram" aria-label="Visit our Instagram page">
+                    <i class="fab fa-instagram"></i>
+                </a>
+                <a href="https://wa.me/254700123456" title="WhatsApp" aria-label="Contact us on WhatsApp">
+                    <i class="fab fa-whatsapp"></i>
+                </a>
+            </div>
+        </div>
+
+        <div class="footer-section">
+            <h4>Quick Links</h4>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/about-us">About Us</a></li>
+                <li><a href="/stock-list">Stock List</a></li>
+                <li><a href="/vessel-schedule">Vessel Schedule</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h4>Services</h4>
+            <ul>
+                <li><a href="/clearing-forwarding">Clearing & Forwarding</a></li>
+                <li><a href="#">Vehicle Inspection</a></li>
+                <li><a href="#">Shipping & Logistics</a></li>
+                <li><a href="#">Documentation</a></li>
+            </ul>
+        </div>
+
+        <div class="footer-section">
+            <h4>Contact Info</h4>
+            <p><i class="fas fa-phone"></i> <a href="tel:+254700123456">+254 700 123 456</a></p>
+            <p><i class="fas fa-envelope"></i> <a href="mailto:info@tronexcars.com">info@tronexcars.com</a></p>
+            <p><i class="fas fa-map-marker-alt"></i> Mombasa, Kenya</p>
+        </div>
+    </div>
+
+    <div class="footer-bottom">
+        <p>&copy; 2026 Tronex Car Importers Ltd. All rights reserved.</p>
+    </div>
+</footer>
+
+    <script src="/js/script.js"></script>
+</body>
+</html>
