@@ -101,7 +101,7 @@ body {
     background: var(--white);
     border-bottom: 2px solid #f0f0f0;
     padding: 2rem;
-    position: sticky;
+    position: static;
     top: 70px;
     z-index: 50;
 }
@@ -525,7 +525,10 @@ body {
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;
+    -webkit-box-orient: vertical;
     overflow: hidden;
+    text-overflow: ellipsis;
+    max-height: 2.8em;
 }
 
 .btn-view-details {

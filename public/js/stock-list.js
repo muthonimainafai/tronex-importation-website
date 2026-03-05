@@ -42,6 +42,7 @@ async function loadCars() {
             filteredCars = [...allCars];
             populateYears();
             populateMakes();
+            populateMakesDropdown();
             displayCars();
             updateResultsCount();
         }
