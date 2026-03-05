@@ -51,6 +51,27 @@ async function loadCars() {
     }
 }
 
+//populate makes dropdown in search bar
+function populateMakesDropdown() {
+    const makeSelect = document.getElementById('make');
+    const makeCounts = getUniqueMakes();
+
+    // Clear existing options except the first one
+    while (makeSelect.options.length > 1) {
+        makeSelect.remove(1);
+    }
+
+    // Add each make as an option
+    Object.keys(makeCounts)
+        .sort()
+        .forEach(make => {
+            const option = document.createElement('option');
+            option.value = make;
+            option.textContent = `${make} (${makeCounts[make]})`;
+            makeSelect.appendChild(option);
+        });
+}
+
 // Populate years dropdown
 function populateYears() {
     const currentYear = new Date().getFullYear();
