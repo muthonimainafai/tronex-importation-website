@@ -221,9 +221,9 @@ body {
     padding: 1.5rem;
     border-radius: 8px;
     box-shadow: var(--shadow);
-    position: sticky;
+    position: static;
     top: 180px;
-    height: fit-content;
+    height: auto;
     max-height: calc(100vh - 250px);
     overflow-y: auto;
 }
@@ -258,6 +258,7 @@ body {
     padding-bottom: 1rem;
     border-bottom: 2px solid #f0f0f0;
 }
+
 
 .makes-grid {
     display: grid;
