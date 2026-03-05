@@ -96,16 +96,24 @@ function getUniqueMakes() {
 
 // Populate makes in sidebar
 function populateMakes() {
-    const makesGrid = document.getElementById('makesGrid');
+    const makesList = document.getElementById('makesList');
     const makeCounts = getUniqueMakes();
 
-    makesGrid.innerHTML = Object.keys(makeCounts)
+    makesList.innerHTML = Object.keys(makeCounts)
         .sort()
         .map(make => `
-            <div class="make-box" onclick="selectMake('${make}')">
-                <div class="make-logo">${make.substring(0, 2).toUpperCase()}</div>
-                <div class="make-name">${make}</div>
-                <div class="make-count">${makeCounts[make]}</div>
+            <div class="make-item" onclick="selectMake('${make}')">
+                <div class="make-logo-container">
+                    <!-- DUMMY LOGO - Replace with actual logo URL -->
+                    <img src="/images/logos/${make.toLowerCase()}.png" 
+                         alt="${make} Logo" 
+                         class="make-brand-logo"
+                         onerror="this.src='/images/logos/placeholder.png'">
+                </div>
+                <div class="make-info">
+                    <div class="make-name">${make}</div>
+                    <div class="make-count">${makeCounts[make]} cars</div>
+                </div>
             </div>
         `)
         .join('');
@@ -122,10 +130,10 @@ function selectMake(make) {
     }
 
     // Update active state
-    document.querySelectorAll('.make-box').forEach(box => {
-        box.classList.remove('active');
-        if (box.textContent.includes(make) && selectedMake === make) {
-            box.classList.add('active');
+    document.querySelectorAll('.make-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.textContent.includes(make) && selectedMake === make) {
+            item.classList.add('active');
         }
     });
 
@@ -290,8 +298,8 @@ function updateResultsCount() {
 function resetAllFilters() {
     document.getElementById('searchForm').reset();
     selectedMake = null;
-    document.querySelectorAll('.make-box').forEach(box => {
-        box.classList.remove('active');
+    document.querySelectorAll('.make-item').forEach(item => {
+        item.classList.remove('active');
     });
     filteredCars = [...allCars];
     applySorting();
