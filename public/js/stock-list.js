@@ -105,10 +105,9 @@ function populateMakes() {
             <div class="make-item" onclick="selectMake('${make}')">
                 <div class="make-logo-container">
                     <!-- DUMMY LOGO - Replace with actual logo URL -->
-                    <img src="/images/logos/${make.toLowerCase()}.png" 
-                         alt="${make} Logo" 
-                         class="make-brand-logo"
-                         onerror="this.src='/images/logos/placeholder.png'">
+                    <div class="make-logo-placeholder">
+    ${make.substring(0, 2).toUpperCase()}
+</div>
                 </div>
                 <div class="make-info">
                     <div class="make-name">${make}</div>
