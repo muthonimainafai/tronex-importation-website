@@ -94,11 +94,6 @@ function getUniqueMakes() {
     return makeCounts;
 }
 
-// Populate makes in sidebar
-function populateMakes() {
-    const makesList = document.getElementById('makesList');
-    const makeCounts = getUniqueMakes();
-
     makesList.innerHTML = Object.keys(makeCounts)
         .sort()
         .map(make => `
@@ -116,19 +111,35 @@ function populateMakes() {
             </div>
         `)
         .join('');
+        
+        
+
+        // Populate makes in sidebar
+function populateMakes() {
+    const makesList = document.getElementById('makesList');
+    const makeCounts = getUniqueMakes();
+
+    makesList.innerHTML = Object.keys(makeCounts)
+        .sort()
+        .map(make => `
+            <div class="make-item" onclick="selectMake('${make}')">
+                <div class="make-logo-container">
+                    <div class="make-logo-placeholder">
+                        ${make.substring(0, 2).toUpperCase()}
+                    </div>
+                </div>
+                <div class="make-info">
+                    <div class="make-name">${make}</div>
+                    <div class="make-count">${makeCounts[make]} cars</div>
+                </div>
+            </div>
+        `)
+        .join('');
 }
+   
 
-// Select make from sidebar
-function selectMake(make) {
-    if (selectedMake === make) {
-        selectedMake = null;
-        document.getElementById('make').value = '';
-    } else {
-        selectedMake = make;
-        document.getElementById('make').value = make;
-    }
 
-    // Update active state
+// Update active state
     document.querySelectorAll('.make-item').forEach(item => {
         item.classList.remove('active');
         if (item.textContent.includes(make) && selectedMake === make) {
@@ -137,19 +148,17 @@ function selectMake(make) {
     });
 
     performSearch();
-}
+
 
 // Perform search
 function performSearch() {
     const make = document.getElementById('make').value;
     const model = document.getElementById('model').value;
-    const type = document.getElementById('type').value;
     const yearFrom = parseInt(document.getElementById('yearFrom').value) || 0;
 
     filteredCars = allCars.filter(car => {
         const matchesMake = !make || car.make === make;
         const matchesModel = !model || car.model.toLowerCase().includes(model.toLowerCase());
-        const matchesType = !type || car.type === type;
         const matchesYear = !yearFrom || car.year >= yearFrom;
 
         return matchesMake && matchesModel && matchesType && matchesYear;
