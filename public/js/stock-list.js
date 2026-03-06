@@ -94,27 +94,7 @@ function getUniqueMakes() {
     return makeCounts;
 }
 
-    makesList.innerHTML = Object.keys(makeCounts)
-        .sort()
-        .map(make => `
-            <div class="make-item" onclick="selectMake('${make}')">
-                <div class="make-logo-container">
-                    <!-- DUMMY LOGO - Replace with actual logo URL -->
-                    <div class="make-logo-placeholder">
-    ${make.substring(0, 2).toUpperCase()}
-</div>
-                </div>
-                <div class="make-info">
-                    <div class="make-name">${make}</div>
-                    <div class="make-count">${makeCounts[make]} cars</div>
-                </div>
-            </div>
-        `)
-        .join('');
-        
-        
-
-        // Populate makes in sidebar
+// Populate makes in sidebar
 function populateMakes() {
     const makesList = document.getElementById('makesList');
     const makeCounts = getUniqueMakes();
@@ -136,10 +116,18 @@ function populateMakes() {
         `)
         .join('');
 }
-   
 
+// Select make from sidebar
+function selectMake(make) {
+    if (selectedMake === make) {
+        selectedMake = null;
+        document.getElementById('make').value = '';
+    } else {
+        selectedMake = make;
+        document.getElementById('make').value = make;
+    }
 
-// Update active state
+    // Update active state
     document.querySelectorAll('.make-item').forEach(item => {
         item.classList.remove('active');
         if (item.textContent.includes(make) && selectedMake === make) {
@@ -148,7 +136,7 @@ function populateMakes() {
     });
 
     performSearch();
-
+}
 
 // Perform search
 function performSearch() {
@@ -161,7 +149,7 @@ function performSearch() {
         const matchesModel = !model || car.model.toLowerCase().includes(model.toLowerCase());
         const matchesYear = !yearFrom || car.year >= yearFrom;
 
-        return matchesMake && matchesModel && matchesType && matchesYear;
+        return matchesMake && matchesModel && matchesYear;
     });
 
     applySorting();
