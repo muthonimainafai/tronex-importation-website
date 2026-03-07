@@ -43,11 +43,24 @@ const carSchema = new mongoose.Schema({
         type: String,
         required: true
     },
+    fuel: {
+        type: String,
+        enum: ['Petrol', 'Diesel', 'Hybrid', 'Electric'],
+        default: 'Petrol'
+    },
+    drive: {
+        type: String,
+        enum: ['2WD', '4WD', 'AWD'],
+        default: '2WD'
+    },
+    engineCapacity: {
+        type: String,
+        default: ''
+    },
     description: {
         type: String,
         required: true
     },
-
     badge: {
         type: String,
         enum: ['Featured', 'New Arrival', 'Hot Deal'],

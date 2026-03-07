@@ -5,9 +5,9 @@ let carToDelete = null;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-    loadCars();
     setupEventListeners();
     addDummyData();
+    loadCars();
 });
 
 // Setup event listeners
@@ -75,6 +75,9 @@ async function addDummyData() {
                 mileage: 15000,
                 transmission: 'Automatic',
                 color: 'Silver',
+                fuel: 'Hybrid',
+                drive: '2WD',
+                engineCapacity: '2.5L',
                 badge: 'New Arrival',
                 availability: 'Available',
                 description: 'Premium hybrid sedan with excellent fuel efficiency and modern technology.'
@@ -89,6 +92,9 @@ async function addDummyData() {
                 mileage: 35000,
                 transmission: 'Automatic',
                 color: 'Black',
+                fuel: 'Petrol',
+                drive: 'AWD',
+                engineCapacity: '1.5L',
                 badge: 'Featured',
                 availability: 'Available',
                 description: 'Spacious SUV perfect for families with great safety features.'
@@ -103,6 +109,9 @@ async function addDummyData() {
                 mileage: 45000,
                 transmission: 'Automatic',
                 color: 'Red',
+                fuel: 'Diesel',
+                drive: '4WD',
+                engineCapacity: '3.0L',
                 badge: 'Hot Deal',
                 availability: 'Reserved',
                 description: 'Powerful pickup truck with towing capacity and comfortable cabin.'
@@ -117,6 +126,9 @@ async function addDummyData() {
                 mileage: 55000,
                 transmission: 'Automatic',
                 color: 'White',
+                fuel: 'Petrol',
+                drive: '2WD',
+                engineCapacity: '2.0L',
                 badge: 'Featured',
                 availability: 'Available',
                 description: 'Luxury sedan with premium features and smooth performance.'
@@ -131,6 +143,9 @@ async function addDummyData() {
                 mileage: 12000,
                 transmission: 'Automatic',
                 color: 'Blue',
+                fuel: 'Petrol',
+                drive: 'AWD',
+                engineCapacity: '2.5L',
                 badge: 'New Arrival',
                 availability: 'Sold',
                 description: 'Modern SUV with agile handling and advanced safety systems.'
@@ -145,6 +160,9 @@ async function addDummyData() {
                 mileage: 28000,
                 transmission: 'Automatic',
                 color: 'Gray',
+                fuel: 'Petrol',
+                drive: '2WD',
+                engineCapacity: '1.8L',
                 badge: 'Featured',
                 availability: 'Available',
                 description: 'Reliable sedan with smooth ride and good fuel economy.'
@@ -175,7 +193,7 @@ function displayCars() {
     if (filteredCars.length === 0) {
         tbody.innerHTML = `
             <tr class="loading-row">
-                <td colspan="8">No vehicles found. Try adjusting your filters or add a new vehicle.</td>
+                <td colspan="11">No vehicles found. Try adjusting your filters or add a new vehicle.</td>
             </tr>
         `;
         return;
@@ -187,14 +205,15 @@ function displayCars() {
             <td>${car.make} ${car.model}</td>
             <td>${car.year}</td>
             <td>$${car.price.toLocaleString()}</td>
-            <td>${car.mileage.toLocaleString()} km</td>
+            <td>${car.fuel || 'N/A'}</td>
+            <td>${car.color}</td>
+            <td>${car.drive || 'N/A'}</td>
+            <td>${car.engineCapacity || 'N/A'}</td>
+            <td>${car.transmission}</td>
             <td>
                 <span class="status-badge status-${car.availability.toLowerCase()}">
                     ${car.availability}
                 </span>
-            </td>
-            <td>
-                <span class="badge-featured">${car.badge}</span>
             </td>
             <td>
                 <div class="action-buttons">
@@ -253,7 +272,7 @@ function openEditModal(carId) {
     currentEditId = carId;
     document.getElementById('modalTitle').textContent = 'Edit Vehicle';
 
-    // Fill form
+    // Fill form - INCLUDING THE NEW FIELDS!
     document.getElementById('name').value = car.name;
     document.getElementById('make').value = car.make;
     document.getElementById('model').value = car.model;
@@ -263,6 +282,9 @@ function openEditModal(carId) {
     document.getElementById('type').value = car.type;
     document.getElementById('transmission').value = car.transmission;
     document.getElementById('color').value = car.color;
+    document.getElementById('fuel').value = car.fuel || '';
+    document.getElementById('drive').value = car.drive || '';
+    document.getElementById('engineCapacity').value = car.engineCapacity || '';
     document.getElementById('availability').value = car.availability;
     document.getElementById('badge').value = car.badge;
     document.getElementById('description').value = car.description;
@@ -284,6 +306,9 @@ async function saveCar(e) {
         type: document.getElementById('type').value,
         transmission: document.getElementById('transmission').value,
         color: document.getElementById('color').value,
+        fuel: document.getElementById('fuel').value,
+        drive: document.getElementById('drive').value,
+        engineCapacity: document.getElementById('engineCapacity').value,
         availability: document.getElementById('availability').value,
         badge: document.getElementById('badge').value,
         description: document.getElementById('description').value,

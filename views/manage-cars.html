@@ -40,15 +40,18 @@
                         <th>Make/Model</th>
                         <th>Year</th>
                         <th>Price</th>
-                        <th>Mileage</th>
+                        <th>Fuel</th>
+                        <th>Color</th>
+                        <th>Drive</th>
+                        <th>Engine</th>
+                        <th>Transmission</th>
                         <th>Status</th>
-                        <th>Badge</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody id="carsTableBody">
                     <tr class="loading-row">
-                        <td colspan="8">
+                        <td colspan="11">
                             <div class="spinner"></div>
                             Loading vehicles...
                         </td>
@@ -120,6 +123,34 @@
                     <div class="form-group">
                         <label for="year">Year *</label>
                         <input type="number" id="year" required placeholder="2024">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fuel">Fuel Type *</label>
+                        <select id="fuel" required>
+                            <option value="">Select Fuel Type</option>
+                            <option value="Petrol">Petrol</option>
+                            <option value="Diesel">Diesel</option>
+                            <option value="Hybrid">Hybrid</option>
+                            <option value="Electric">Electric</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="drive">Drive *</label>
+                        <select id="drive" required>
+                            <option value="">Select Drive</option>
+                            <option value="2WD">2WD</option>
+                            <option value="4WD">4WD</option>
+                            <option value="AWD">AWD</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="engineCapacity">Engine Capacity *</label>
+                        <input type="text" id="engineCapacity" required placeholder="e.g., 1.5L, 2.0L">
                     </div>
                 </div>
 

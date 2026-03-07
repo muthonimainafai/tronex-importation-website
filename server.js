@@ -206,7 +206,7 @@ app.post('/api/admin/login', (req, res) => {
 //CREATE new car
 app.post('/api/admin/cars', async (req, res) => {
   try {
-      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor } = req.body;
+      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor, fuel, drive, engineCapacity } = req.body;
 
       // Validation
       if (!name || !make || !model || !year || !price || !mileage || !color || !description) {
@@ -228,6 +228,9 @@ app.post('/api/admin/cars', async (req, res) => {
         mileage: parseInt(mileage),
         transmission: transmission || 'Automatic',
         color,
+        fuel: fuel || '',
+        drive: drive || '',
+        engineCapacity: engineCapacity || '',
         description,
         badge: badge || 'Featured',
         availability: availability || 'Available',
@@ -255,7 +258,7 @@ app.post('/api/admin/cars', async (req, res) => {
 
  app.put('/api/admin/cars/:id', async (req, res) => {
   try {
-      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor } = req.body;
+      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor, fuel, drive, engineCapacity } = req.body;
 
       const updateData = {
           name,
@@ -267,6 +270,9 @@ app.post('/api/admin/cars', async (req, res) => {
           mileage: parseInt(mileage),
           transmission: transmission || 'Automatic',
           color,
+          fuel: fuel || '',
+          drive: drive || '',
+          engineCapacity: engineCapacity || '',
           description,
           badge: badge || 'Featured',
           availability: availability || 'Available',
@@ -274,7 +280,7 @@ app.post('/api/admin/cars', async (req, res) => {
           updatedAt: Date.now()
       };
 
-      const car = await Car.findByIdAndUpdate(req.params.id, updateData, { new: true });
+      const car = await Car.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
 
       if (!car) {
           return res.status(404).json({
