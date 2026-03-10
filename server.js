@@ -3,7 +3,77 @@ const dotenv = require('dotenv');
 const path = require('path');
 const cors = require('cors');
 const bodyParser = require('body-parser');
+const multer = require('multer');
+const sharp = require('sharp');
+const fs = require('fs');
 
+// ==================== MULTER CONFIGURATION ====================
+
+// Ensure upload directories exist
+const uploadDir = path.join(__dirname, 'public', 'uploads', 'cars');
+if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure multer storage
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, 'car-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// File filter - only allow images
+const fileFilter = (req, file, cb) => {
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    
+    if (allowedMimes.includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only image files are allowed (JPEG, PNG, WebP, GIF)'), false);
+    }
+};
+
+// Multer upload configuration
+const upload = multer({
+    storage: storage,
+    fileFilter: fileFilter,
+    limits: {
+        fileSize: 5 * 1024 * 1024 // 5MB max file size
+    }
+});
+
+// ==================== IMAGE OPTIMIZATION ====================
+
+async function optimizeImage(filePath) {
+    try {
+        const optimizedPath = filePath.replace(
+            path.extname(filePath),
+            '-optimized.webp'
+        );
+
+        await sharp(filePath)
+            .resize(1200, 800, {
+                fit: 'inside',
+                withoutEnlargement: true
+            })
+            .webp({ quality: 80 })
+            .toFile(optimizedPath);
+
+        // Delete original and use optimized
+        if (fs.existsSync(filePath)) {
+            fs.unlinkSync(filePath);
+        }
+
+        return path.basename(optimizedPath);
+    } catch (error) {
+        console.error('❌ Error optimizing image:', error);
+        return path.basename(filePath);
+    }
+}
 // Load environment variables
 dotenv.config();
 
@@ -11,8 +81,8 @@ const app = express();
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.json({ limit: '50mb' }));
+app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
 // ==================== STATIC FILES ====================
 console.log('📁 Serving static files from:', path.join(__dirname, 'public'));
@@ -34,12 +104,85 @@ console.log('📊 Connecting to MongoDB...');
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tronex-cars')
     .then(() => {
         console.log('✅ MongoDB connected successfully!');
+        initializeCounter();
     })
     .catch((err) => {
         console.error('❌ MongoDB connection error:', err.message);
     });
 
-    //=====================ROUTES=================================
+// ============================================
+// STOCK NUMBER COUNTER FUNCTIONS
+// ============================================
+
+// Initialize counter for stock numbers
+async function initializeCounter() {
+    try {
+        const countersCollection = mongoose.connection.collection('counters');
+        const counter = await countersCollection.findOne({ _id: 'internalStockNumber' });
+        
+        if (!counter) {
+            await countersCollection.insertOne({
+                _id: 'internalStockNumber',
+                sequence_value: 200
+            });
+            console.log('✅ Stock number counter initialized with value 200');
+        } else {
+            console.log('✅ Stock number counter found with value:', counter.sequence_value);
+        }
+    } catch (error) {
+        console.error('Error initializing counter:', error);
+    }
+}
+
+// Generate next internal stock number using counter
+async function getNextInternalStockNumber() {
+  try {
+      const countersCollection = mongoose.connection.collection('counters');
+      
+      console.log('🔄 [COUNTER] Attempting to increment counter...');
+      
+      // Increment counter and get the NEW value
+      const result = await countersCollection.findOneAndUpdate(
+          { _id: 'internalStockNumber' },
+          { $inc: { sequence_value: 1 } },
+          { 
+              returnDocument: 'after'  // Get AFTER increment
+          }
+      );
+      
+      console.log('📊 [COUNTER] Full result object:', JSON.stringify(result, null, 2));
+      
+      // Handle both old and new MongoDB driver formats
+      let counterValue = null;
+      
+      if (result && result.value) {
+          // Old format: result.value.sequence_value
+          counterValue = result.value.sequence_value;
+          console.log('✅ [COUNTER] Using old format - sequence_value:', counterValue);
+      } else if (result && result.sequence_value) {
+          // New format: result.sequence_value directly
+          counterValue = result.sequence_value;
+          console.log('✅ [COUNTER] Using new format - sequence_value:', counterValue);
+      } else {
+          console.error('❌ [COUNTER] Cannot extract sequence_value from result');
+          console.error('Result:', result);
+          await initializeCounter();
+          return '26.00200';
+      }
+      
+      // Build the stock number
+      const stockNumber = `26.00${counterValue}`;
+      console.log(`✅ [STOCK NUMBER GENERATED] ${stockNumber} (counter: ${counterValue})`);
+      
+      return stockNumber;
+  } catch (error) {
+      console.error('❌ [COUNTER ERROR]:', error);
+      return '26.00200';
+  }
+}
+
+
+//=====================ROUTES=================================
 
 // Home page
 app.get('/', (req, res) => {
@@ -49,7 +192,7 @@ app.get('/', (req, res) => {
 
 // About Us route
 app.get('/about-us', (req, res) => {
-  res.send('<h1>About Us Page - Coming Soon</h1><a href="/">Back to Home</a>');
+  res.render('about-us');
 });
 
 // Stock List route - render full stock-list view
@@ -118,9 +261,9 @@ app.post('/api/admin/login', (req, res) => {
   const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
   
   if (password === correctPassword) {
-    res.json({ success: true, message: 'Login successful' });
+      res.json({ success: true, message: 'Login successful' });
   } else {
-    res.json({ success: false, message: 'Invalid password' });
+      res.json({ success: false, message: 'Invalid password' });
   }
 });
 
@@ -129,8 +272,13 @@ app.get('/admin-dashboard', (req, res) => {
   res.render('admin');
 });
 
+// Manage cars route
+app.get('/manage-cars', (req, res) => {
+  res.render('manage-cars');
+});
+
 //=====================CAR API ROUTES======================
-//Ger all cars(for users side)
+//Get all cars(for users side)
 app.get('/api/cars', async (req, res) => {
   try {
       const cars = await Car.find().sort({ createdAt: -1 });
@@ -206,59 +354,97 @@ app.post('/api/admin/login', (req, res) => {
 //CREATE new car
 app.post('/api/admin/cars', async (req, res) => {
   try {
-      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor, fuel, drive, engineCapacity } = req.body;
+      console.log('📨 [POST /api/admin/cars] Received data:', req.body);
 
-      // Validation
-      if (!name || !make || !model || !year || !price || !mileage || !color || !description) {
+      const { 
+          make, model, year, price, type, bodyType, mileage, transmission, 
+          color, interiorColor, doors, seats, fuel, drive, engineCapacity, trunk,
+          registration, description, badge, availability, gradientColor, highlights, 
+          features, mainImage, externalStockNumber
+      } = req.body;
+
+      // Validation - ONLY required fields
+      if (!make || !model || !year || !price || !mileage || !color || !description) {
+          console.log('❌ Validation failed - missing required fields');
           return res.status(400).json({
               success: false,
-              message: 'Please fill in all required fields'
+              message: 'Please fill in all required fields: make, model, year, price, mileage, color, description'
           });
       }
 
-      //Create new car
+      // Generate auto-incrementing internal stock number
+      const internalStockNumber = await getNextInternalStockNumber();
+      
+      // Auto-generate car name from make and model
+      const name = `${make} ${model}`;
+
+      console.log('📦 [CREATING CAR] Stock:', internalStockNumber, 'Name:', name);
+
+      // Create new car
       const newCar = new Car({
         carId: `CAR-${Date.now()}`,
+        internalStockNumber,
+        externalStockNumber: externalStockNumber || '',
         name,
         make,
         model,
         year: parseInt(year),
         price: parseFloat(price),
         type: type || 'Sedan',
+        bodyType: bodyType || '',
         mileage: parseInt(mileage),
         transmission: transmission || 'Automatic',
         color,
-        fuel: fuel || '',
-        drive: drive || '',
+        interiorColor: interiorColor || '',
+        doors: parseInt(doors) || 4,
+        seats: parseInt(seats) || 5,
+        fuel: fuel || 'Petrol',
+        drive: drive || '2WD',
         engineCapacity: engineCapacity || '',
+        trunk: trunk || '',
+        registration: registration || '',
         description,
         badge: badge || 'Featured',
         availability: availability || 'Available',
-        gradientColor: gradientColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-    });
+        gradientColor: gradientColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        highlights: Array.isArray(highlights) ? highlights : [],
+        features: Array.isArray(features) ? features : [],
+        mainImage: mainImage || ''
+      });
 
-    await newCar.save();
+      const savedCar = await newCar.save();
+      console.log('✅ [CAR CREATED]:', savedCar._id, 'Stock:', internalStockNumber);
 
-    res.status(201).json({
+      res.status(201).json({
         success: true,
         message: 'Car added successfully',
-        data: newCar
-    });
-} catch (error) {
-    console.error('Error creating car:', error);
-    res.status(500).json({
-        success: false,
-        message: 'Error creating car',
-        error: error.message
-    });
-}
+        data: savedCar
+      });
+  } catch (error) {
+      console.error('❌ [ERROR CREATING CAR]:', error.message);
+      console.error('Stack:', error.stack);
+      res.status(500).json({
+          success: false,
+          message: 'Error creating car: ' + error.message,
+          error: error.message
+      });
+  }
 });
 
  //UPDATE car
-
- app.put('/api/admin/cars/:id', async (req, res) => {
+app.put('/api/admin/cars/:id', async (req, res) => {
   try {
-      const { name, make, model, year, price, type, mileage, transmission, color, description, badge, availability, gradientColor, fuel, drive, engineCapacity } = req.body;
+      console.log('🔄 [UPDATE START] Car ID:', req.params.id);
+
+      const { 
+          make, model, year, price, type, bodyType, mileage, transmission, 
+          color, interiorColor, doors, seats, fuel, drive, engineCapacity, trunk,
+          registration, description, badge, availability, gradientColor, highlights, 
+          features, images, mainImage, externalStockNumber
+      } = req.body;
+
+      // Auto-generate car name from make and model
+      const name = `${make} ${model}`;
 
       const updateData = {
           name,
@@ -267,27 +453,47 @@ app.post('/api/admin/cars', async (req, res) => {
           year: parseInt(year),
           price: parseFloat(price),
           type: type || 'Sedan',
+          bodyType: bodyType || '',
           mileage: parseInt(mileage),
           transmission: transmission || 'Automatic',
           color,
-          fuel: fuel || '',
-          drive: drive || '',
+          interiorColor: interiorColor || '',
+          doors: parseInt(doors) || 4,
+          seats: parseInt(seats) || 5,
+          fuel: fuel || 'Petrol',
+          drive: drive || '2WD',
           engineCapacity: engineCapacity || '',
+          trunk: trunk || '',
+          registration: registration || '',
           description,
           badge: badge || 'Featured',
           availability: availability || 'Available',
           gradientColor: gradientColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          updatedAt: Date.now()
+          highlights: highlights || [],
+          features: features || [],
+          images: images || [],
+          mainImage: mainImage || '',
+          externalStockNumber: externalStockNumber || '',
+          updatedAt: new Date()
       };
 
-      const car = await Car.findByIdAndUpdate(req.params.id, updateData, { returnDocument: 'after' });
+      console.log('💾 [SAVE DATA] Updating car...');
+
+      const car = await Car.findByIdAndUpdate(
+          req.params.id, 
+          updateData, 
+          { new: true }
+      );
 
       if (!car) {
+          console.log('❌ [ERROR] Car not found:', req.params.id);
           return res.status(404).json({
               success: false,
               message: 'Car not found'
           });
       }
+
+      console.log('✅ [UPDATE SUCCESS]:', name);
 
       res.json({
           success: true,
@@ -295,7 +501,7 @@ app.post('/api/admin/cars', async (req, res) => {
           data: car
       });
   } catch (error) {
-      console.error('Error updating car:', error);
+      console.error('❌ [ERROR UPDATING CAR]:', error.message);
       res.status(500).json({
           success: false,
           message: 'Error updating car',
@@ -304,25 +510,7 @@ app.post('/api/admin/cars', async (req, res) => {
   }
 });
 
-//manage cars route
-app.get('/manage-cars', (req, res) => {
-  res.render('manage-cars');
-});
-// ==================== ERROR HANDLERS ====================
-
-// stock-list route
-app.get('/stock-list', (req, res) => {
-  res.render('stock-list');
-});
-
-// 404 handler
-app.use((req, res) => {
-  console.log('❌ 404 - Not Found:', req.method, req.path);
-  res.status(404).send('Page not found - <a href="/">Back to Home</a>');
-});
-
 // DELETE car
-
 app.delete('/api/admin/cars/:id', async (req, res) => {
   try {
       const car = await Car.findByIdAndDelete(req.params.id);
@@ -347,6 +535,148 @@ app.delete('/api/admin/cars/:id', async (req, res) => {
           error: error.message
       });
   }
+});
+
+// ==================== IMAGE UPLOAD ROUTES ====================
+
+// Upload single image
+app.post('/api/upload/image', upload.single('image'), async (req, res) => {
+  try {
+      if (!req.file) {
+          return res.status(400).json({
+              success: false,
+              message: 'No image file provided'
+          });
+      }
+
+      console.log('📸 [IMAGE UPLOAD] Received file:', req.file.filename);
+
+      // Optimize image
+      const optimizedFilename = await optimizeImage(req.file.path);
+
+      const imageUrl = `/uploads/cars/${optimizedFilename}`;
+
+      console.log('✅ [IMAGE OPTIMIZED] URL:', imageUrl);
+
+      res.json({
+          success: true,
+          message: 'Image uploaded successfully',
+          data: {
+              filename: optimizedFilename,
+              url: imageUrl,
+              size: req.file.size
+          }
+      });
+  } catch (error) {
+      console.error('❌ [IMAGE UPLOAD ERROR]:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error uploading image: ' + error.message
+      });
+  }
+});
+
+// Upload multiple images
+app.post('/api/upload/images', upload.array('images', 10), async (req, res) => {
+  try {
+      if (!req.files || req.files.length === 0) {
+          return res.status(400).json({
+              success: false,
+              message: 'No image files provided'
+          });
+      }
+
+      console.log('📸 [MULTI-UPLOAD] Received', req.files.length, 'files');
+
+      const uploadedImages = [];
+
+      for (const file of req.files) {
+          try {
+              const optimizedFilename = await optimizeImage(file.path);
+              const imageUrl = `/uploads/cars/${optimizedFilename}`;
+              uploadedImages.push({
+                  filename: optimizedFilename,
+                  url: imageUrl
+              });
+          } catch (error) {
+              console.error('❌ Error optimizing file:', file.filename, error);
+          }
+      }
+
+      console.log('✅ [MULTI-UPLOAD COMPLETE] Uploaded:', uploadedImages.length, 'images');
+
+      res.json({
+          success: true,
+          message: `${uploadedImages.length} images uploaded successfully`,
+          data: uploadedImages
+      });
+  } catch (error) {
+      console.error('❌ [MULTI-UPLOAD ERROR]:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error uploading images: ' + error.message
+      });
+  }
+});
+
+// Delete image
+app.delete('/api/upload/image/:filename', (req, res) => {
+  try {
+      const { filename } = req.params;
+      const filePath = path.join(uploadDir, filename);
+
+      console.log('🗑️ [DELETE IMAGE] File:', filename);
+
+      // Security: prevent directory traversal
+      if (!path.resolve(filePath).startsWith(uploadDir)) {
+          return res.status(403).json({
+              success: false,
+              message: 'Invalid file path'
+          });
+      }
+
+      if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          console.log('✅ [IMAGE DELETED]:', filename);
+          res.json({
+              success: true,
+              message: 'Image deleted successfully'
+          });
+      } else {
+          res.status(404).json({
+              success: false,
+              message: 'Image not found'
+          });
+      }
+  } catch (error) {
+      console.error('❌ [DELETE IMAGE ERROR]:', error);
+      res.status(500).json({
+          success: false,
+          message: 'Error deleting image: ' + error.message
+      });
+  }
+});
+
+// Car details page
+app.get('/car/:id', async (req, res) => {
+    try {
+        const car = await Car.findById(req.params.id);
+        if (!car) {
+            return res.status(404).render('404', { message: 'Car not found' });
+        }
+        res.render('car-details', { car });
+    } catch (error) {
+        console.error('Error fetching car details:', error);
+        res.status(500).render('error', { message: 'Error loading car details' });
+    }
+  });
+
+// ==================== ERROR HANDLERS ====================
+
+// 404 handler
+app.use((req, res) => {
+  console.log('❌ 404 - Not Found:', req.method, req.path);
+  res.status(404).send('Page not found - <a href="/">Back to Home</a>');
 });
 
 // Error handler
