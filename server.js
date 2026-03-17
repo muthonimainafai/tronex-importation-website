@@ -6,7 +6,8 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
-
+const authRoutes = require('./routes/auth');
+const invoiceRoutes = require('./routes/invoices');
 // ==================== MULTER CONFIGURATION ====================
 
 // Ensure upload directories exist
@@ -670,6 +671,10 @@ app.get('/car/:id', async (req, res) => {
         res.status(500).render('error', { message: 'Error loading car details' });
     }
   });
+
+  // Register routes
+app.use(authRoutes);
+app.use(invoiceRoutes);
 
 // ==================== ERROR HANDLERS ====================
 

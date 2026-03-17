@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><%= car.name %> - Tronex Car Importers Ltd</title>
+    <title><%= car.make %> <%= car.model %> - Tronex Car Importers</title>
     <link rel="stylesheet" href="/css/car-details.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -34,7 +34,7 @@
             <div class="gallery-container">
                 <!-- Main Image -->
                 <div class="main-image-wrapper">
-                    <img id="mainImage" src="<%= car.mainImage || car.images?.[0] || '/uploads/placeholder.jpg' %>" alt="<%= car.name %>" class="main-image">
+                    <img id="mainImage" src="<%= car.mainImage || car.images?.[0] || '/uploads/placeholder.jpg' %>" alt="<%= car.make %> <%= car.model %>" class="main-image" onerror="this.src='/uploads/placeholder.jpg'">
                     
                     <!-- Image Navigation -->
                     <% if (car.images && car.images.length > 1) { %>
@@ -55,7 +55,7 @@
                     <div class="thumbnail-strip">
                         <% car.images.forEach((image, index) => { %>
                             <div class="thumbnail-item <%= index === 0 ? 'active' : '' %>" onclick="selectImage(<%= index %>)">
-                                <img src="<%= image %>" alt="<%= car.name %> image <%= index + 1 %>" loading="lazy">
+                                <img src="<%= image %>" alt="<%= car.make %> <%= car.model %> image <%= index + 1 %>" loading="lazy" onerror="this.src='/uploads/placeholder.jpg'">
                             </div>
                         <% }); %>
                     </div>
@@ -67,11 +67,6 @@
                 <div class="price-badge">
                     <span class="label">Price</span>
                     <span class="price">$<%= car.price.toLocaleString() %></span>
-                </div>
-
-                <div class="stock-badge">
-                    <span class="label">Stock #</span>
-                    <span class="stock-number"><%= car.internalStockNumber %></span>
                 </div>
 
                 <div class="availability-badge">
@@ -99,7 +94,7 @@
                 <div class="details-column left-column">
                     <!-- Title & Basic Info -->
                     <div class="detail-card overview-card">
-                        <h1 class="car-title"><%= car.name %></h1>
+                        <h1 class="car-title"><%= car.make %> <%= car.model %></h1>
                         <p class="car-tagline"><%= car.description %></p>
 
                         <div class="basic-specs">
@@ -155,7 +150,7 @@
                     <% if (car.features && car.features.length > 0) { %>
                         <div class="detail-card features-card">
                             <h2 class="card-title">
-                                <i class="fas fa-cogs"></i> Features
+                                <i class="fas fa-cogs"></i> Features & Equipment
                             </h2>
                             <div class="features-grid">
                                 <% car.features.forEach(feature => { %>
@@ -265,21 +260,13 @@
                         </div>
                     </div>
 
-                    <!-- Stock Information -->
-                    <div class="detail-card stock-info-card">
+                    <!-- Pricing & Availability -->
+                    <div class="detail-card price-info-card">
                         <h2 class="card-title">
-                            <i class="fas fa-box"></i> Stock Information
+                            <i class="fas fa-tag"></i> Pricing & Availability
                         </h2>
 
                         <div class="specs-list">
-                            <div class="spec-row">
-                                <span class="spec-name">Internal Stock #</span>
-                                <span class="spec-val mono"><%= car.internalStockNumber %></span>
-                            </div>
-                            <div class="spec-row">
-                                <span class="spec-name">External Stock #</span>
-                                <span class="spec-val mono"><%= car.externalStockNumber || 'N/A' %></span>
-                            </div>
                             <div class="spec-row">
                                 <span class="spec-name">Price</span>
                                 <span class="spec-val price-val">$<%= car.price.toLocaleString() %></span>
@@ -322,7 +309,7 @@
                 
                 <form id="inquiryForm" onsubmit="submitInquiry(event)">
                     <input type="hidden" id="carId" value="<%= car._id %>">
-                    <input type="hidden" id="carName" value="<%= car.name %>">
+                    <input type="hidden" id="carName" value="<%= car.make %> <%= car.model %>">
 
                     <div class="form-group">
                         <label for="name">Full Name *</label>

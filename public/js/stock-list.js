@@ -233,19 +233,29 @@ function displayCars() {
                         </div>
                     </div>
                     <p class="car-desc">${car.description}</p>
-                    <button class="btn-view-details" onclick="openCarModal('${car._id}')">
-                        View Details
-                    </button>
+                    <div class="car-actions">
+                        <button class="btn-view-details" onclick="viewCarDetails('${car._id}')">
+                            <i class="fas fa-eye"></i> View Full Details
+                        </button>
+                        <button class="btn-inquire" onclick="openCarModal('${car._id}')">
+                            <i class="fas fa-envelope"></i> Quick View
+                        </button>
+                    </div>
                 </div>
             </div>
         `;
     }).join('');
 }
 
+// Store current car ID for modal operations
+let currentModalCarId = null;
+
 // Open car modal
 function openCarModal(carId) {
     const car = allCars.find(c => c._id === carId);
     if (!car) return;
+
+    currentModalCarId = carId;
 
     let statusClass = 'available';
     let statusText = '✓ Available';
@@ -258,31 +268,79 @@ function openCarModal(carId) {
         statusText = '✕ Sold';
     }
 
+    // Set image
+    const modalImage = document.getElementById('modalCarImage');
+    if (modalImage) {
+        modalImage.src = car.mainImage || car.images?.[0] || '';
+        modalImage.style.display = 'block';
+        modalImage.onerror = function() {
+            this.style.display = 'none';
+            document.getElementById('carImagePlaceholder').style.background = car.gradientColor;
+        };
+    }
+
     document.getElementById('carImagePlaceholder').style.background = car.gradientColor;
-    document.getElementById('carBadge').textContent = car.badge;
+    document.getElementById('carBadge').textContent = car.badge || 'Featured';
     document.getElementById('carStatus').className = `status-badge ${statusClass}`;
     document.getElementById('carStatus').textContent = statusText;
 
-    document.getElementById('modalCarName').textContent = car.name;
+    document.getElementById('modalCarName').textContent = `${car.make} ${car.model}`;
     document.getElementById('modalCarSubtitle').textContent = `${car.make} ${car.model} • ${car.type}`;
     document.getElementById('modalCarPrice').textContent = `$${car.price.toLocaleString()}`;
 
     document.getElementById('modalYear').textContent = car.year;
     document.getElementById('modalMileage').textContent = `${car.mileage.toLocaleString()} km`;
-    document.getElementById('modalTransmission').textContent = car.transmission;
-    document.getElementById('modalColor').textContent = car.color;
-    document.getElementById('modalType').textContent = car.type;
+    document.getElementById('modalTransmission').textContent = car.transmission || 'N/A';
+    
+    document.getElementById('modalType').textContent = car.type || 'N/A';
+    document.getElementById('modalBodyType').textContent = car.bodyType || 'N/A';
+    document.getElementById('modalColor').textContent = car.color || 'N/A';
+    document.getElementById('modalInteriorColor').textContent = car.interiorColor || 'N/A';
+    document.getElementById('modalTransmissionSpec').textContent = car.transmission || 'N/A';
+    document.getElementById('modalFuel').textContent = car.fuel || 'N/A';
+    document.getElementById('modalDrive').textContent = car.drive || 'N/A';
+    document.getElementById('modalEngineCapacity').textContent = car.engineCapacity || 'N/A';
+    document.getElementById('modalDoors').textContent = car.doors || 'N/A';
+    document.getElementById('modalSeats').textContent = car.seats || 'N/A';
     document.getElementById('modalAvailability').textContent = car.availability;
     document.getElementById('modalStatusText').textContent = statusText;
-    document.getElementById('modalDescription').textContent = car.description;
+    document.getElementById('modalStatusText').className = `status-label ${statusClass}`;
+    document.getElementById('modalDescription').textContent = car.description || 'No description available';
 
     document.getElementById('carModal').classList.add('show');
+    document.body.style.overflow = 'hidden'; // Prevent background scroll
 }
 
 // Close modal
 function closeModal() {
     document.getElementById('carModal').classList.remove('show');
+    document.body.style.overflow = 'auto'; // Re-enable background scroll
 }
+
+// View full car details
+function openFullDetails() {
+    if (currentModalCarId) {
+        closeModal();
+        viewCarDetails(currentModalCarId);
+    }
+}
+
+// View car details in full page
+function viewCarDetails(carId) {
+    console.log('👁️ Viewing car details:', carId);
+    window.location.href = `/car/${carId}`;
+}
+
+// Close modal when pressing Escape key
+document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+        closeModal();
+    }
+});
+    
+
+
+
 
 // Update results count
 function updateResultsCount() {
@@ -299,4 +357,9 @@ function resetAllFilters() {
     });
     filteredCars = [...allCars];
     applySorting();
+}
+// View car details in full page
+function viewCarDetails(carId) {
+    console.log('👁️ Viewing car details:', carId);
+    window.location.href = `/car/${carId}`;
 }
