@@ -7,6 +7,21 @@ let carToDelete = null;
 let uploadedImages = [];
 let mainImageUrl = '';
 
+// Invoice cost fields (per-car)
+const INVOICE_FIELDS = [
+    'cif',
+    'portCfsCharges',
+    'shippingLineDo',
+    'radiation',
+    'mssLevy',
+    'clearingServiceCharge',
+    'kgPlate',
+    'ntsaSticker',
+    'handlingCosts',
+    'dutyPayable',
+    'discount'
+];
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
@@ -57,6 +72,56 @@ function setupEventListeners() {
             saveImageData();
         });
     }
+
+    // Invoice cost live totals
+    INVOICE_FIELDS.forEach(f => {
+        const el = document.getElementById(`inv_${f}`);
+        if (el) el.addEventListener('input', recomputeInvoiceTotals);
+    });
+}
+
+function numOrNull(v) {
+    if (v === undefined || v === null) return null;
+    const s = String(v).trim();
+    if (s === '') return null;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : null;
+}
+
+function moneyKES(n) {
+    const num = Number(n || 0);
+    return `KES ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function recomputeInvoiceTotals() {
+    const costs = {};
+    INVOICE_FIELDS.forEach(f => {
+        const el = document.getElementById(`inv_${f}`);
+        costs[f] = el ? numOrNull(el.value) : null;
+    });
+
+    const itemizedSum = [
+        'cif',
+        'portCfsCharges',
+        'shippingLineDo',
+        'radiation',
+        'mssLevy',
+        'clearingServiceCharge',
+        'kgPlate',
+        'ntsaSticker',
+        'handlingCosts'
+    ].reduce((sum, k) => sum + (Number(costs[k]) || 0), 0);
+
+    const duty = Number(costs.dutyPayable) || 0;
+    const discount = Number(costs.discount) || 0;
+    const total = Math.max(0, itemizedSum + duty - discount);
+
+    const elNeed = document.getElementById('inv_itemizedNeedTotal');
+    const elDuty = document.getElementById('inv_itemizedDutyTaxesTotal');
+    const elTotal = document.getElementById('inv_totalCosts');
+    if (elNeed) elNeed.value = moneyKES(itemizedSum);
+    if (elDuty) elDuty.value = moneyKES(duty);
+    if (elTotal) elTotal.value = moneyKES(total);
 }
 
 
@@ -221,7 +286,7 @@ function displayImagePreviews() {
 
     container.innerHTML = uploadedImages.map((img, index) => `
         <div class="image-preview-item ${img.url === mainImageUrl ? 'main-image' : ''}">
-            <img src="${img.url}" alt="Car image ${index + 1}" onerror="this.src='/uploads/placeholder.jpg'">
+            <img src="${img.url}" alt="Car image ${index + 1}" onerror="this.src='/images/placeholder-car.svg'">
             <div class="image-preview-overlay">
                 <div class="image-preview-actions">
                     <button type="button" class="btn-set-main" title="Set as main image" onclick="setMainImage('${img.url}')">
@@ -646,6 +711,12 @@ function openAddModal() {
     document.getElementById('internalStockNumber').value = '';
     document.getElementById('carImages').value = '';
     document.getElementById('carMainImage').value = '';
+    // Reset invoice inputs
+    INVOICE_FIELDS.forEach(f => {
+        const el = document.getElementById(`inv_${f}`);
+        if (el) el.value = '';
+    });
+    recomputeInvoiceTotals();
     document.getElementById('carModal').classList.add('show');
 }
 
@@ -687,6 +758,16 @@ function openEditModal(carId) {
     document.getElementById('bodyType').value = car.bodyType || '';
     document.getElementById('highlights').value = (car.highlights || []).join(', ');
     document.getElementById('features').value = (car.features || []).join(', ');
+
+    // Invoice costs
+    const inv = car.invoiceCosts || {};
+    INVOICE_FIELDS.forEach(f => {
+        const el = document.getElementById(`inv_${f}`);
+        if (!el) return;
+        const v = inv[f];
+        el.value = (v === null || v === undefined) ? '' : v;
+    });
+    recomputeInvoiceTotals();
 
     // Load images for edit mode
     loadImagesForEdit(car);
@@ -764,7 +845,23 @@ async function saveCar(e) {
         badge: document.getElementById('badge').value,
         
         // Styling
-        gradientColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+        gradientColor: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+
+        // Invoice costs (KES)
+        invoiceCosts: {
+            currency: 'KES',
+            cif: numOrNull(document.getElementById('inv_cif')?.value),
+            portCfsCharges: numOrNull(document.getElementById('inv_portCfsCharges')?.value),
+            shippingLineDo: numOrNull(document.getElementById('inv_shippingLineDo')?.value),
+            radiation: numOrNull(document.getElementById('inv_radiation')?.value),
+            mssLevy: numOrNull(document.getElementById('inv_mssLevy')?.value),
+            clearingServiceCharge: numOrNull(document.getElementById('inv_clearingServiceCharge')?.value),
+            kgPlate: numOrNull(document.getElementById('inv_kgPlate')?.value),
+            ntsaSticker: numOrNull(document.getElementById('inv_ntsaSticker')?.value),
+            handlingCosts: numOrNull(document.getElementById('inv_handlingCosts')?.value),
+            dutyPayable: numOrNull(document.getElementById('inv_dutyPayable')?.value),
+            discount: numOrNull(document.getElementById('inv_discount')?.value)
+        }
     };
 
     console.log('📤 [DATA TO SEND]:', carData);

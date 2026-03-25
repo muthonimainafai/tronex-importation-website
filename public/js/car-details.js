@@ -17,6 +17,17 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('📷 Total images:', carImages.length);
 });
 
+// Buy Now -> Payment page (requires login)
+function buyNow(carId) {
+    const token = localStorage.getItem('tronex_token');
+    if (!token) {
+        const next = `/payment/${encodeURIComponent(carId)}`;
+        window.location.href = '/login?next=' + encodeURIComponent(next);
+        return;
+    }
+    window.location.href = `/payment/${encodeURIComponent(carId)}`;
+}
+
 // Navigate to previous image
 function previousImage() {
     if (carImages.length <= 1) return;

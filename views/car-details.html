@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><%= car.make %> <%= car.model %> - Tronex Car Importers</title>
     <link rel="stylesheet" href="/css/car-details.css">
+    <link rel="stylesheet" href="/css/invoice.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -34,14 +35,14 @@
             <div class="gallery-container">
                 <!-- Main Image -->
                 <div class="main-image-wrapper">
-                    <img id="mainImage" src="<%= car.mainImage || car.images?.[0] || '/uploads/placeholder.jpg' %>" alt="<%= car.make %> <%= car.model %>" class="main-image" onerror="this.src='/uploads/placeholder.jpg'">
+                    <img id="mainImage" src="<%= car.mainImage || ((car.images && car.images[0]) ? car.images[0] : '/images/placeholder-car.svg') %>" alt="<%= car.make %> <%= car.model %>" class="main-image" onerror="this.src='/images/placeholder-car.svg'">
                     
                     <!-- Image Navigation -->
                     <% if (car.images && car.images.length > 1) { %>
-                        <button class="image-nav-btn prev-btn" onclick="previousImage()">
+                        <button class="image-nav-btn prev-btn" onclick="previousImage()" aria-label="Previous image" title="Previous image">
                             <i class="fas fa-chevron-left"></i>
                         </button>
-                        <button class="image-nav-btn next-btn" onclick="nextImage()">
+                        <button class="image-nav-btn next-btn" onclick="nextImage()" aria-label="Next image" title="Next image">
                             <i class="fas fa-chevron-right"></i>
                         </button>
                         <div class="image-counter">
@@ -53,11 +54,11 @@
                 <!-- Thumbnail Strip -->
                 <% if (car.images && car.images.length > 1) { %>
                     <div class="thumbnail-strip">
-                        <% car.images.forEach((image, index) => { %>
-                            <div class="thumbnail-item <%= index === 0 ? 'active' : '' %>" onclick="selectImage(<%= index %>)">
-                                <img src="<%= image %>" alt="<%= car.make %> <%= car.model %> image <%= index + 1 %>" loading="lazy" onerror="this.src='/uploads/placeholder.jpg'">
+                        <% for (let index = 0; index < car.images.length; index++) { const image = car.images[index]; %>
+                            <div class="thumbnail-item <%= index === 0 ? 'active' : '' %>" data-index="<%= index %>" onclick="selectImage(+this.dataset.index)">
+                                <img src="<%= image %>" alt="<%= car.make %> <%= car.model %> image <%= index + 1 %>" loading="lazy" onerror="this.src='/images/placeholder-car.svg'">
                             </div>
-                        <% }); %>
+                        <% } %>
                     </div>
                 <% } %>
             </div>
@@ -92,6 +93,19 @@
             <div class="details-grid">
                 <!-- Left Column - Overview -->
                 <div class="details-column left-column">
+                    <!-- Invoice (Left side) -->
+                    <div class="detail-card" style="border-left:none;background:transparent;padding:0">
+                        <%- include('partials/tronex-invoice.html', { car, invoice }) %>
+                        <div style="margin-top:12px">
+                            <button class="btn-inquire" style="width:100%" onclick="buyNow('<%= car._id %>')">
+                                <i class="fas fa-credit-card"></i> Buy Now
+                            </button>
+                            <p style="margin-top:8px;color:rgba(0,0,0,.65);font-size:.9rem">
+                                You must be logged in to proceed to payment.
+                            </p>
+                        </div>
+                    </div>
+
                     <!-- Title & Basic Info -->
                     <div class="detail-card overview-card">
                         <h1 class="car-title"><%= car.make %> <%= car.model %></h1>
@@ -184,6 +198,10 @@
                             <div class="spec-row">
                                 <span class="spec-name">Year</span>
                                 <span class="spec-val"><%= car.year %></span>
+                            </div>
+                            <div class="spec-row">
+                                <span class="spec-name">StockID</span>
+                                <span class="spec-val"><%= car.internalStockNumber || 'N/A' %></span>
                             </div>
                             <div class="spec-row">
                                 <span class="spec-name">Mileage</span>

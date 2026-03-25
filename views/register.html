@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Register - Tronex</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .auth-wrap{max-width:980px;margin:40px auto;padding:0 16px}
+    .auth-card{display:grid;grid-template-columns:1.1fr .9fr;gap:18px;background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.08)}
+    @media (max-width:900px){.auth-card{grid-template-columns:1fr}}
+    .auth-left{padding:26px 24px}
+    .auth-right{padding:26px 24px;background:linear-gradient(135deg,#667eea 0%,#764ba2 100%);color:#fff}
+    .auth-title{margin:0 0 8px;font-size:28px}
+    .auth-sub{margin:0 0 18px;color:rgba(255,255,255,.9)}
+    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:700px){.form-grid{grid-template-columns:1fr}}
+    .fg{display:flex;flex-direction:column;gap:6px}
+    .fg label{font-weight:600;color:#111}
+    .fg input{padding:11px 12px;border:1px solid rgba(0,0,0,.12);border-radius:10px;outline:none}
+    .fg input:focus{border-color:#667eea;box-shadow:0 0 0 4px rgba(102,126,234,.18)}
+    .row-full{grid-column:1/-1}
+    .btn-primary{width:100%;padding:12px 14px;border:none;border-radius:10px;background:#111;color:#fff;font-weight:700;cursor:pointer}
+    .btn-primary:disabled{opacity:.7;cursor:not-allowed}
+    .msg{margin:10px 0 0;padding:10px 12px;border-radius:10px;display:none}
+    .msg.error{display:block;background:#ffe8e8;color:#8a1f1f;border:1px solid #ffd0d0}
+    .msg.success{display:block;background:#e8fff1;color:#0f5a2b;border:1px solid #bff2d2}
+    .hint{margin-top:10px;color:rgba(0,0,0,.7)}
+    .hint a{color:#667eea;font-weight:700;text-decoration:none}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:999px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);margin-top:10px}
+    .pill i{opacity:.95}
+    .right-list{margin:14px 0 0;padding-left:18px}
+    .right-list li{margin:8px 0;color:rgba(255,255,255,.92)}
+  </style>
+</head>
+<body>
+  <div class="auth-wrap">
+    <div class="auth-card">
+      <div class="auth-left">
+        <h1 class="auth-title">Create your account</h1>
+        <p class="hint">Already have an account? <a href="/login">Login</a></p>
+
+        <div id="msg" class="msg"></div>
+
+        <form id="registerForm">
+          <div class="form-grid">
+            <div class="fg">
+              <label for="firstName">First name</label>
+              <input id="firstName" name="firstName" required autocomplete="given-name">
+            </div>
+            <div class="fg">
+              <label for="lastName">Last name</label>
+              <input id="lastName" name="lastName" required autocomplete="family-name">
+            </div>
+            <div class="fg row-full">
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" required autocomplete="email">
+            </div>
+            <div class="fg row-full">
+              <label for="mobileNumber">Mobile number</label>
+              <input id="mobileNumber" name="mobileNumber" required placeholder="0712345678" autocomplete="tel">
+            </div>
+            <div class="fg row-full">
+              <label for="address">Address (optional)</label>
+              <input id="address" name="address" autocomplete="street-address">
+            </div>
+            <div class="fg">
+              <label for="city">City (optional)</label>
+              <input id="city" name="city" autocomplete="address-level2">
+            </div>
+            <div class="fg">
+              <label for="country">Country (optional)</label>
+              <input id="country" name="country" autocomplete="country-name">
+            </div>
+            <div class="fg">
+              <label for="password">Password</label>
+              <input id="password" name="password" type="password" required minlength="6" autocomplete="new-password">
+            </div>
+            <div class="fg">
+              <label for="passwordConfirm">Confirm password</label>
+              <input id="passwordConfirm" name="passwordConfirm" type="password" required minlength="6" autocomplete="new-password">
+            </div>
+            <div class="row-full">
+              <button id="btnRegister" class="btn-primary" type="submit">
+                Create account
+              </button>
+            </div>
+          </div>
+        </form>
+      </div>
+
+      <div class="auth-right">
+        <h2 style="margin:0 0 6px">Welcome to Tronex</h2>
+        <p class="auth-sub">Register to manage invoices and access your profile.</p>
+        <div class="pill"><i class="fa-solid fa-shield-halved"></i> Secure JWT sessions</div>
+        <ul class="right-list">
+          <li>Track your account profile</li>
+          <li>Access invoices linked to your account</li>
+          <li>Faster inquiries with saved details</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>window.__AUTH_PAGE__ = 'register';</script>
+</body>
+</html>
+

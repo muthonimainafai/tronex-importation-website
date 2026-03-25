@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Invoice Builder - Tronex Admin</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .page-wrap{padding:18px}
+    .grid{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+    @media (max-width:1050px){.grid{grid-template-columns:1fr}}
+    .card{background:#fff;border:1px solid rgba(0,0,0,.08);border-radius:14px;padding:16px;box-shadow:0 10px 24px rgba(0,0,0,.06)}
+    .card h2{margin:0 0 10px}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){.row{grid-template-columns:1fr}}
+    .fg{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .fg label{font-weight:700;color:#111}
+    .fg input,.fg select,.fg textarea{padding:11px 12px;border:1px solid rgba(0,0,0,.12);border-radius:10px;outline:none}
+    .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:#667eea;box-shadow:0 0 0 4px rgba(102,126,234,.18)}
+    .btn{border:none;border-radius:10px;padding:11px 12px;font-weight:800;cursor:pointer}
+    .btn-primary{background:#667eea;color:#fff}
+    .btn-secondary{background:#111;color:#fff}
+    .btn-ghost{background:transparent;border:1px solid rgba(0,0,0,.14)}
+    .btn-danger{background:#b42318;color:#fff}
+    .items{width:100%;border-collapse:collapse}
+    .items th,.items td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,.08);vertical-align:top}
+    .items th{text-align:left;color:#444;font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+    .muted{color:rgba(0,0,0,.7)}
+    .msg{display:none;margin:10px 0 0;padding:10px 12px;border-radius:10px}
+    .msg.error{display:block;background:#ffe8e8;color:#8a1f1f;border:1px solid #ffd0d0}
+    .msg.success{display:block;background:#e8fff1;color:#0f5a2b;border:1px solid #bff2d2}
+    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .badge-pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;background:#f3f4ff;border:1px solid rgba(102,126,234,.25);font-weight:800;color:#2d2b7a}
+    .actions{display:flex;gap:10px;flex-wrap:wrap}
+    .invoice-meta{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media (max-width:720px){.invoice-meta{grid-template-columns:1fr}}
+    .kv{padding:10px 12px;border:1px solid rgba(0,0,0,.08);border-radius:12px;background:#fafafa}
+    .kv .k{font-size:12px;text-transform:uppercase;color:#666;letter-spacing:.05em}
+    .kv .v{font-weight:900;color:#111;margin-top:2px}
+    .right-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <aside class="admin-sidebar">
+      <div class="admin-logo">
+        <i class="fas fa-car"></i>
+        <span>Tronex Admin</span>
+      </div>
+      <nav class="admin-nav">
+        <a href="/admin-dashboard" class="admin-nav-link">
+          <i class="fas fa-chart-line"></i> Dashboard
+        </a>
+        <a href="/manage-cars" class="admin-nav-link">
+          <i class="fas fa-list"></i> Manage Cars
+        </a>
+        <a href="/admin-invoices" class="admin-nav-link active">
+          <i class="fas fa-receipt"></i> Invoice Builder
+        </a>
+        <a href="/" class="admin-nav-link">
+          <i class="fas fa-arrow-left"></i> Back to Site
+        </a>
+      </nav>
+    </aside>
+
+    <main class="admin-content">
+      <div class="admin-header">
+        <div>
+          <h1>Invoice Builder</h1>
+          <div class="badge-pill"><i class="fa-solid fa-bolt"></i> Create draft invoices fast</div>
+        </div>
+        <div class="right-actions">
+          <button class="btn btn-ghost" id="btnGoLogin" type="button" style="display:none">Login</button>
+          <button class="btn btn-secondary" id="btnLogout" type="button">Logout</button>
+        </div>
+      </div>
+
+      <div class="page-wrap">
+        <div id="msg" class="msg"></div>
+
+        <div class="grid">
+          <section class="card">
+            <h2>Build invoice</h2>
+            <p class="muted" style="margin-top:-6px">Select a car by StockID, then add line items.</p>
+
+            <div class="row">
+              <div class="fg">
+                <label for="carSelect">Car (StockID • Make/Model)</label>
+                <select id="carSelect"></select>
+              </div>
+              <div class="fg">
+                <label for="expiryDate">Expiry date</label>
+                <input id="expiryDate" type="date" required>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="fg">
+                <label for="bankName">Bank name</label>
+                <input id="bankName" placeholder="I & M Bank Limited">
+              </div>
+              <div class="fg">
+                <label for="accountName">Account name</label>
+                <input id="accountName" placeholder="Tronex Ltd">
+              </div>
+            </div>
+            <div class="row">
+              <div class="fg">
+                <label for="accountNumber">Account number</label>
+                <input id="accountNumber" placeholder="043033...">
+              </div>
+              <div class="fg">
+                <label for="swiftCode">Swift code</label>
+                <input id="swiftCode" placeholder="IMBLKENA">
+              </div>
+            </div>
+            <div class="row">
+              <div class="fg">
+                <label for="paybillNumber">M-Pesa paybill</label>
+                <input id="paybillNumber" placeholder="542542">
+              </div>
+              <div class="fg">
+                <label for="mpesaAccountName">M-Pesa account name</label>
+                <input id="mpesaAccountName" placeholder="Tronex Ltd">
+              </div>
+            </div>
+
+            <div class="fg">
+              <label for="claimClause">Claim clause (optional)</label>
+              <textarea id="claimClause" rows="3" placeholder="Leave blank to use default terms"></textarea>
+            </div>
+
+            <hr style="border:none;border-top:1px solid rgba(0,0,0,.08);margin:14px 0">
+
+            <div class="topbar">
+              <h2 style="margin:0">Invoice items</h2>
+              <div class="actions">
+                <button class="btn btn-ghost" id="btnAddItem" type="button"><i class="fa-solid fa-plus"></i> Add item</button>
+                <button class="btn btn-primary" id="btnCreateInvoice" type="button"><i class="fa-solid fa-wand-magic-sparkles"></i> Create invoice</button>
+              </div>
+            </div>
+
+            <div style="overflow:auto;margin-top:10px">
+              <table class="items" aria-label="Invoice items">
+                <thead>
+                  <tr>
+                    <th style="width:55%">Description</th>
+                    <th style="width:25%">Cost</th>
+                    <th style="width:20%">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="itemsBody"></tbody>
+              </table>
+            </div>
+          </section>
+
+          <aside class="card">
+            <h2>Result</h2>
+            <div class="invoice-meta">
+              <div class="kv"><div class="k">Invoice number</div><div class="v" id="outInvoiceNumber">—</div></div>
+              <div class="kv"><div class="k">Status</div><div class="v" id="outStatus">—</div></div>
+              <div class="kv"><div class="k">Subtotal</div><div class="v" id="outSubtotal">—</div></div>
+              <div class="kv"><div class="k">Total</div><div class="v" id="outTotal">—</div></div>
+            </div>
+
+            <div class="actions" style="margin-top:14px">
+              <button class="btn btn-secondary" id="btnDownloadPdf" type="button" disabled>
+                <i class="fa-solid fa-file-arrow-down"></i> Download PDF
+              </button>
+              <button class="btn btn-danger" id="btnClear" type="button">
+                <i class="fa-solid fa-broom"></i> Clear
+              </button>
+            </div>
+
+            <p class="muted" style="margin-top:12px">
+              This page uses your JWT from <code>localStorage.tronex_token</code>. If you are not logged in, click Login.
+            </p>
+          </aside>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/admin-invoices.js"></script>
+</body>
+</html>
+

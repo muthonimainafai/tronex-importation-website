@@ -1,7 +1,10 @@
+require('dotenv').config();
 const mongoose = require('mongoose');
 
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017/tronex-cars';
+
 // Connect to MongoDB
-mongoose.connect('mongodb://localhost:27017/tronex-cars')
+mongoose.connect(mongoUri)
     .then(() => {
         console.log('✅ Connected to MongoDB');
         resetDatabase();
@@ -18,12 +21,12 @@ async function resetDatabase() {
         console.log(`🗑️  Deleted ${carResult.deletedCount} cars`);
 
         // Reset counter
-        const counterResult = await mongoose.connection.collection('counters').updateOne(
+        await mongoose.connection.collection('counters').updateOne(
             { _id: 'internalStockNumber' },
-            { $set: { sequence_value: 200 } },
+            { $set: { sequence_value: 199 } },
             { upsert: true }
         );
-        console.log('✅ Counter reset to 200');
+        console.log('✅ Counter reset so next car gets TRON{yy}-00200');
 
         // Verify
         const counter = await mongoose.connection.collection('counters').findOne({ _id: 'internalStockNumber' });

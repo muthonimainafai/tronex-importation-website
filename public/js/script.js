@@ -13,6 +13,39 @@ const totalAmountEl = document.getElementById('totalAmount');
 const checkoutBtn = document.getElementById('checkoutBtn');
 const continueShopping = document.getElementById('continueShopping');
 
+// ==================== Auth Nav (Public Site) ====================
+function updateAuthNav() {
+    const token = localStorage.getItem('tronex_token');
+    const elRegister = document.getElementById('authNavRegister');
+    const elLogin = document.getElementById('authNavLogin');
+    const elLogout = document.getElementById('authNavLogout');
+
+    if (!elRegister || !elLogin || !elLogout) return;
+
+    if (token) {
+        elRegister.style.display = 'none';
+        elLogin.style.display = 'none';
+        elLogout.style.display = 'list-item';
+    } else {
+        elRegister.style.display = 'list-item';
+        elLogin.style.display = 'list-item';
+        elLogout.style.display = 'none';
+    }
+
+    const logoutLink = elLogout.querySelector('a');
+    if (logoutLink) {
+        logoutLink.onclick = () => {
+            localStorage.removeItem('tronex_token');
+            localStorage.removeItem('tronex_user');
+            try {
+                document.cookie = 'tronex_token=; Max-Age=0; Path=/; SameSite=Lax';
+            } catch (_) {}
+            updateAuthNav();
+            window.location.href = '/';
+        };
+    }
+}
+
 // Load cart from localStorage
 function loadCart() {
     const savedCart = localStorage.getItem('tronexCart');
@@ -26,6 +59,9 @@ function loadCart() {
 function saveCart() {
     localStorage.setItem('tronexCart', JSON.stringify(cart));
 }
+
+// Run on load
+updateAuthNav();
 
 // Open cart sidebar
 cartIcon.addEventListener('click', (e) => {

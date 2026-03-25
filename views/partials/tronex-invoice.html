@@ -1,0 +1,143 @@
+<div class="trx-invoice">
+  <%
+    const c = (typeof customer !== 'undefined' && customer) ? customer : null;
+    const toName = c ? ((c.profile?.legalName || '').trim() || `${c.firstName || ''} ${c.lastName || ''}`.trim()) : '';
+    const toEmail = c ? (c.email || '') : '';
+    const toMobile = c ? (c.mobileNumber || '') : '';
+    const customerId = c ? (c._id || c.id || '') : '';
+  %>
+  <div class="trx-letterhead">
+    <div class="trx-letterhead-left">
+      <div class="trx-company">TRONEX CAR IMPORTERS LTD</div>
+      <div class="trx-sub">Proforma Invoice</div>
+      <div class="trx-muted">Mombasa, Kenya</div>
+    </div>
+    <div class="trx-letterhead-right">
+      <div class="trx-muted">Mobile: __________________</div>
+      <div class="trx-muted">Email: ___________________</div>
+      <div class="trx-muted">Web: _____________________</div>
+    </div>
+  </div>
+
+  <div class="trx-title">PROFORMA INVOICE</div>
+
+  <div class="trx-meta">
+    <div class="trx-meta-row">
+      <div><strong>Customer ID:</strong> <%= customerId || '__________________' %></div>
+      <div><strong>Stock ID:</strong> <span><%= car.internalStockNumber || 'N/A' %></span></div>
+    </div>
+    <div class="trx-meta-row">
+      <div><strong>Pro.Invoice No:</strong> __________________</div>
+      <div><strong>Date Issued:</strong> __________________</div>
+      <div><strong>Expiry Date:</strong> __________________</div>
+    </div>
+    <div class="trx-meta-row">
+      <div><strong>To:</strong> <%= toName || '__________________' %></div>
+      <div><strong>Mobile No:</strong> <%= toMobile || '__________________' %></div>
+      <div><strong>Email:</strong> <%= toEmail || '__________________' %></div>
+    </div>
+  </div>
+
+  <div class="trx-table">
+    <div class="trx-thead">
+      <div>Description</div>
+      <div class="trx-right">Cost</div>
+      <div class="trx-right">Itemized Total</div>
+      <div class="trx-right">Total Cost</div>
+    </div>
+
+    <% (invoice.items || []).forEach((it, idx) => { %>
+      <div class="trx-tr <%= idx % 2 === 0 ? 'alt' : '' %>">
+        <div class="trx-desc"><%= it.label %></div>
+        <div class="trx-right"><%= invoice.currency %> <%= (Number(it.value || 0)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></div>
+        <div class="trx-right"></div>
+        <div class="trx-right"></div>
+      </div>
+    <% }) %>
+
+    <div class="trx-tr sum">
+      <div class="trx-desc"><strong>Itemized Need Analysis Total</strong></div>
+      <div></div>
+      <div class="trx-right"><strong><%= invoice.currency %> <%= Number(invoice.itemizedNeedAnalysisTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong></div>
+      <div></div>
+    </div>
+
+    <div class="trx-tr alt">
+      <div class="trx-desc">Duty Payable</div>
+      <div class="trx-right"><%= invoice.currency %> <%= Number(invoice.dutyPayable || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></div>
+      <div class="trx-right"></div>
+      <div class="trx-right"></div>
+    </div>
+
+    <div class="trx-tr sum">
+      <div class="trx-desc"><strong>Itemized Duty &amp; Taxes Total</strong></div>
+      <div></div>
+      <div class="trx-right"><strong><%= invoice.currency %> <%= Number(invoice.itemizedDutyTaxesTotal || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong></div>
+      <div></div>
+    </div>
+
+    <div class="trx-tr alt">
+      <div class="trx-desc">Discount</div>
+      <div class="trx-right"><%= invoice.currency %> <%= Number(invoice.discount || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></div>
+      <div class="trx-right"></div>
+      <div class="trx-right"></div>
+    </div>
+
+    <div class="trx-tr total">
+      <div class="trx-desc"><strong>TOTAL COSTS (All Costs Inclusive)</strong></div>
+      <div></div>
+      <div></div>
+      <div class="trx-right"><strong><%= invoice.currency %> <%= Number(invoice.totalCosts || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) %></strong></div>
+    </div>
+  </div>
+
+  <div class="trx-paygrid">
+    <div class="trx-box">
+      <div class="trx-box-title">BANK DETAILS</div>
+      <div class="trx-kv"><span>Bank</span><strong><%= invoice.bank.bankName %></strong></div>
+      <div class="trx-kv"><span>Account Name</span><strong><%= invoice.bank.accountName %></strong></div>
+      <div class="trx-kv"><span>Branch Code</span><strong><%= invoice.bank.branchCode %></strong></div>
+      <div class="trx-kv"><span>Branch</span><strong><%= invoice.bank.branch %></strong></div>
+      <div class="trx-kv"><span>Account Number</span><strong><%= invoice.bank.accountNumber %></strong></div>
+      <div class="trx-kv"><span>Swift Code</span><strong><%= invoice.bank.swiftCode %></strong></div>
+    </div>
+
+    <div class="trx-box">
+      <div class="trx-box-title">MPESA DETAILS</div>
+      <div class="trx-kv"><span>Paybill No</span><strong><%= invoice.bank.paybill %></strong></div>
+      <div class="trx-kv"><span>Account Name</span><strong>TRONEX</strong></div>
+      <div class="trx-stamp-wrap">
+        <img src="/images/tronex-stamp.svg" alt="Tronex Stamp" class="trx-stamp" />
+      </div>
+      <div class="trx-sign">
+        <span>Customer Signature:</span>
+        <div class="trx-line"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="trx-vehicle">
+    <div class="trx-vehicle-title">VEHICLE DETAILS</div>
+    <div class="trx-vehicle-grid">
+      <div class="trx-vehicle-img">
+        <img src="<%= car.mainImage || ((car.images && car.images[0]) ? car.images[0] : '/images/placeholder-car.svg') %>" alt="<%= car.make %> <%= car.model %>" onerror="this.src='/images/placeholder-car.svg'">
+      </div>
+      <div class="trx-vehicle-specs">
+        <div class="trx-spec-row"><span>Stock ID</span><strong><%= car.internalStockNumber || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Year</span><strong><%= car.year || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Make</span><strong><%= car.make || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Model</span><strong><%= car.model || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Body Type</span><strong><%= car.bodyType || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Seats</span><strong><%= car.seats || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Doors</span><strong><%= car.doors || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Drive Type</span><strong><%= car.drive || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Transmission</span><strong><%= car.transmission || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Fuel Type</span><strong><%= car.fuel || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Engine Capacity</span><strong><%= car.engineCapacity || 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Mileage</span><strong><%= (car.mileage !== undefined && car.mileage !== null) ? car.mileage.toLocaleString() : 'N/A' %></strong></div>
+        <div class="trx-spec-row"><span>Vehicle</span><strong><%= car.registration || 'N/A' %></strong></div>
+      </div>
+    </div>
+  </div>
+</div>
+

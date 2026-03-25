@@ -6,6 +6,7 @@ const bodyParser = require('body-parser');
 const multer = require('multer');
 const sharp = require('sharp');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const authRoutes = require('./routes/auth');
 const invoiceRoutes = require('./routes/invoices');
 // ==================== MULTER CONFIGURATION ====================
@@ -100,6 +101,7 @@ app.engine('html', require('ejs').renderFile);
 //======================MONGODB CONNECTION=======================
 const mongoose = require('mongoose');
 const Car = require('./models/car');
+const User = require('./models/User');
 
 console.log('📊 Connecting to MongoDB...');
 mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tronex-cars')
@@ -122,11 +124,12 @@ async function initializeCounter() {
         const counter = await countersCollection.findOne({ _id: 'internalStockNumber' });
         
         if (!counter) {
+            // Next issued number uses $inc first → 199 + 1 = 200 → TRON{yy}-00200
             await countersCollection.insertOne({
                 _id: 'internalStockNumber',
-                sequence_value: 200
+                sequence_value: 199
             });
-            console.log('✅ Stock number counter initialized with value 200');
+            console.log('✅ Stock number counter initialized (first ID will be …00200)');
         } else {
             console.log('✅ Stock number counter found with value:', counter.sequence_value);
         }
@@ -135,51 +138,156 @@ async function initializeCounter() {
     }
 }
 
-// Generate next internal stock number using counter
+// Generate next internal stock number: TRON{yy}-##### (e.g. TRON26-00200)
 async function getNextInternalStockNumber() {
+  const yearTwoDigits = String(new Date().getFullYear()).slice(-2);
+  const fallback = `TRON${yearTwoDigits}-00200`;
+
   try {
       const countersCollection = mongoose.connection.collection('counters');
-      
-      console.log('🔄 [COUNTER] Attempting to increment counter...');
-      
-      // Increment counter and get the NEW value
-      const result = await countersCollection.findOneAndUpdate(
+
+      let doc = await countersCollection.findOneAndUpdate(
           { _id: 'internalStockNumber' },
           { $inc: { sequence_value: 1 } },
-          { 
-              returnDocument: 'after'  // Get AFTER increment
-          }
+          { returnDocument: 'after' }
       );
-      
-      console.log('📊 [COUNTER] Full result object:', JSON.stringify(result, null, 2));
-      
-      // Handle both old and new MongoDB driver formats
-      let counterValue = null;
-      
-      if (result && result.value) {
-          // Old format: result.value.sequence_value
-          counterValue = result.value.sequence_value;
-          console.log('✅ [COUNTER] Using old format - sequence_value:', counterValue);
-      } else if (result && result.sequence_value) {
-          // New format: result.sequence_value directly
-          counterValue = result.sequence_value;
-          console.log('✅ [COUNTER] Using new format - sequence_value:', counterValue);
-      } else {
-          console.error('❌ [COUNTER] Cannot extract sequence_value from result');
-          console.error('Result:', result);
+
+      const unwrap = (r) => (r && typeof r === 'object' && r.sequence_value != null ? r : (r && r.value) || null);
+      doc = unwrap(doc);
+
+      if (!doc || doc.sequence_value == null) {
+          console.warn('⚠️ [COUNTER] Missing or unreadable counter; re-initializing');
           await initializeCounter();
-          return '26.00200';
+          doc = unwrap(await countersCollection.findOneAndUpdate(
+              { _id: 'internalStockNumber' },
+              { $inc: { sequence_value: 1 } },
+              { returnDocument: 'after' }
+          ));
       }
-      
-      // Build the stock number
-      const stockNumber = `26.00${counterValue}`;
+
+      const counterValue = doc?.sequence_value;
+      if (counterValue == null) {
+          console.error('❌ [COUNTER] sequence_value still missing after retry');
+          return fallback;
+      }
+
+      const sequence = String(counterValue).padStart(5, '0');
+      const stockNumber = `TRON${yearTwoDigits}-${sequence}`;
       console.log(`✅ [STOCK NUMBER GENERATED] ${stockNumber} (counter: ${counterValue})`);
-      
       return stockNumber;
   } catch (error) {
       console.error('❌ [COUNTER ERROR]:', error);
-      return '26.00200';
+      return fallback;
   }
+}
+
+function formatStockId(raw) {
+  if (raw == null || raw === '') return raw;
+  let s = typeof raw === 'string' ? raw.trim() : String(raw);
+
+  const canonical = /^TRON(\d{2})-(\d{5})$/i.exec(s);
+  if (canonical) return `TRON${canonical[1]}-${canonical[2]}`;
+
+  const legacy = /^TRON-(\d{2})-(\d{5})$/i.exec(s);
+  if (legacy) return `TRON${legacy[1]}-${legacy[2]}`;
+
+  const digits = s.replace(/\D/g, '');
+  const yearTwoDigits = String(new Date().getFullYear()).slice(-2);
+
+  if (digits.length >= 7) {
+      const year = digits.slice(0, 2);
+      const seq = digits.slice(-5).padStart(5, '0');
+      return `TRON${year}-${seq}`;
+  }
+
+  if (digits.length > 0) {
+      return `TRON${yearTwoDigits}-${digits.padStart(5, '0').slice(-5)}`;
+  }
+
+  return s;
+}
+
+// ============================================
+// AUTH HELPERS (JWT stored in cookie or header)
+// ============================================
+function parseCookies(cookieHeader) {
+  const out = {};
+  if (!cookieHeader) return out;
+  cookieHeader.split(';').forEach(part => {
+    const idx = part.indexOf('=');
+    if (idx === -1) return;
+    const k = part.slice(0, idx).trim();
+    const v = part.slice(idx + 1).trim();
+    if (!k) return;
+    out[k] = decodeURIComponent(v);
+  });
+  return out;
+}
+
+function getJwtFromRequest(req) {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) return authHeader.slice('Bearer '.length);
+  const cookies = parseCookies(req.headers.cookie || '');
+  return cookies.tronex_token || null;
+}
+
+function requireUserPage(req, res, next) {
+  const token = getJwtFromRequest(req);
+  if (!token) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    if (err) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    req.user = user;
+    next();
+  });
+}
+
+// ============================================
+// INVOICE HELPERS (per-car)
+// ============================================
+function toNumOrNull(v) {
+  if (v === null || v === undefined || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+function buildCarInvoiceViewModel(car) {
+  const costs = car?.invoiceCosts || {};
+  const itemized = [
+    { key: 'cif', label: 'Cost insurance and Freight (CIF)', value: toNumOrNull(costs.cif) },
+    { key: 'portCfsCharges', label: 'Port/Cfs Charges', value: toNumOrNull(costs.portCfsCharges) },
+    { key: 'shippingLineDo', label: 'Shipping line/D.O', value: toNumOrNull(costs.shippingLineDo) },
+    { key: 'radiation', label: 'Radiation', value: toNumOrNull(costs.radiation) },
+    { key: 'mssLevy', label: 'MSS Levy', value: toNumOrNull(costs.mssLevy) },
+    { key: 'clearingServiceCharge', label: 'Clearing service Charge', value: toNumOrNull(costs.clearingServiceCharge) },
+    { key: 'kgPlate', label: 'KG Plate (cic ins. comp.insured)', value: toNumOrNull(costs.kgPlate) },
+    { key: 'ntsaSticker', label: 'NTSA Sticker', value: toNumOrNull(costs.ntsaSticker) },
+    { key: 'handlingCosts', label: 'Handling Costs', value: toNumOrNull(costs.handlingCosts) }
+  ];
+
+  const itemizedNeedAnalysisTotal = itemized.reduce((sum, it) => sum + (Number(it.value) || 0), 0);
+  const dutyPayable = Number(toNumOrNull(costs.dutyPayable) || 0);
+  const itemizedDutyTaxesTotal = dutyPayable;
+  const discount = Number(toNumOrNull(costs.discount) || 0);
+  const totalCosts = Math.max(0, itemizedNeedAnalysisTotal + itemizedDutyTaxesTotal - discount);
+
+  return {
+    currency: costs.currency || 'KES',
+    items: itemized,
+    dutyPayable,
+    discount,
+    itemizedNeedAnalysisTotal,
+    itemizedDutyTaxesTotal,
+    totalCosts,
+    bank: {
+      bankName: 'Bank of Africa Kenya Ltd.',
+      accountName: 'Tronex Car Importers Ltd',
+      branchCode: '015',
+      branch: 'Changamwe, Mombasa',
+      accountNumber: '02482480002',
+      swiftCode: 'AFRIKENX',
+      paybill: '972900'
+    }
+  };
 }
 
 
@@ -194,6 +302,20 @@ app.get('/', (req, res) => {
 // About Us route
 app.get('/about-us', (req, res) => {
   res.render('about-us');
+});
+
+// User auth pages
+app.get('/register', (req, res) => {
+  res.render('register');
+});
+
+app.get('/login', (req, res) => {
+  res.render('login');
+});
+
+// My Profile (requires login)
+app.get(['/my-profile', '/my-profile/'], requireUserPage, (req, res) => {
+  res.render('my-profile');
 });
 
 // Stock List route - render full stock-list view
@@ -273,6 +395,11 @@ app.get('/admin-dashboard', (req, res) => {
   res.render('admin');
 });
 
+// Admin invoice builder page
+app.get('/admin-invoices', (req, res) => {
+  res.render('admin-invoices');
+});
+
 // Manage cars route
 app.get('/manage-cars', (req, res) => {
   res.render('manage-cars');
@@ -283,9 +410,14 @@ app.get('/manage-cars', (req, res) => {
 app.get('/api/cars', async (req, res) => {
   try {
       const cars = await Car.find().sort({ createdAt: -1 });
+      const data = cars.map(c => {
+          const obj = c.toObject();
+          obj.internalStockNumber = formatStockId(obj.internalStockNumber);
+          return obj;
+      });
       res.json({
           success: true,
-          data: cars
+          data
       });
   } catch (error) {
       console.error('Error fetching cars:', error);
@@ -301,9 +433,14 @@ app.get('/api/cars', async (req, res) => {
 app.get('/api/cars/featured', async (req, res) => {
   try {
       const cars = await Car.find({ badge: 'Featured' }).limit(6);
+      const data = cars.map(c => {
+          const obj = c.toObject();
+          obj.internalStockNumber = formatStockId(obj.internalStockNumber);
+          return obj;
+      });
       res.json({
           success: true,
-          data: cars
+          data
       });
   } catch (error) {
       console.error('Error fetching featured cars:', error);
@@ -325,9 +462,11 @@ app.get('/api/cars/:id', async (req, res) => {
               message: 'Car not found'
           });
       }
+      const data = car.toObject();
+      data.internalStockNumber = formatStockId(data.internalStockNumber);
       res.json({
           success: true,
-          data: car
+          data
       });
   } catch (error) {
       console.error('Error fetching car:', error);
@@ -361,7 +500,7 @@ app.post('/api/admin/cars', async (req, res) => {
           make, model, year, price, type, bodyType, mileage, transmission, 
           color, interiorColor, doors, seats, fuel, drive, engineCapacity, trunk,
           registration, description, badge, availability, gradientColor, highlights, 
-          features, mainImage, externalStockNumber
+          features, images, mainImage, externalStockNumber, invoiceCosts
       } = req.body;
 
       // Validation - ONLY required fields
@@ -410,7 +549,9 @@ app.post('/api/admin/cars', async (req, res) => {
         gradientColor: gradientColor || 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         highlights: Array.isArray(highlights) ? highlights : [],
         features: Array.isArray(features) ? features : [],
-        mainImage: mainImage || ''
+        images: Array.isArray(images) ? images : [],
+        mainImage: mainImage || '',
+        invoiceCosts: invoiceCosts || undefined
       });
 
       const savedCar = await newCar.save();
@@ -441,7 +582,7 @@ app.put('/api/admin/cars/:id', async (req, res) => {
           make, model, year, price, type, bodyType, mileage, transmission, 
           color, interiorColor, doors, seats, fuel, drive, engineCapacity, trunk,
           registration, description, badge, availability, gradientColor, highlights, 
-          features, images, mainImage, externalStockNumber
+          features, images, mainImage, externalStockNumber, invoiceCosts
       } = req.body;
 
       // Auto-generate car name from make and model
@@ -475,6 +616,7 @@ app.put('/api/admin/cars/:id', async (req, res) => {
           images: images || [],
           mainImage: mainImage || '',
           externalStockNumber: externalStockNumber || '',
+          invoiceCosts: invoiceCosts || undefined,
           updatedAt: new Date()
       };
 
@@ -665,12 +807,31 @@ app.get('/car/:id', async (req, res) => {
         if (!car) {
             return res.status(404).render('404', { message: 'Car not found' });
         }
-        res.render('car-details', { car });
+        const carData = car.toObject();
+        carData.internalStockNumber = formatStockId(carData.internalStockNumber);
+        res.render('car-details', { car: carData, invoice: buildCarInvoiceViewModel(carData) });
     } catch (error) {
         console.error('Error fetching car details:', error);
         res.status(500).render('error', { message: 'Error loading car details' });
     }
   });
+
+// Payment page (requires user account)
+app.get('/payment/:id', requireUserPage, async (req, res) => {
+  try {
+    const car = await Car.findById(req.params.id);
+    if (!car) {
+      return res.status(404).render('404', { message: 'Car not found' });
+    }
+    const carData = car.toObject();
+    carData.internalStockNumber = formatStockId(carData.internalStockNumber);
+    const customer = await User.findById(req.user.id);
+    res.render('payment', { car: carData, invoice: buildCarInvoiceViewModel(carData), customer });
+  } catch (error) {
+    console.error('Error loading payment page:', error);
+    res.status(500).render('error', { message: 'Error loading payment page' });
+  }
+});
 
   // Register routes
 app.use(authRoutes);

@@ -23,12 +23,6 @@ const userSchema = new mongoose.Schema({
         match: [/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/, 'Please enter a valid email']
     },
 
-    phone: {
-        type: String,
-        required: [true, 'Phone number is required'],
-        trim: true
-    },
-
     mobileNumber: {
         type: String,
         required: [true, 'Mobile number is required'],
@@ -49,12 +43,6 @@ const userSchema = new mongoose.Schema({
     },
 
     country: {
-        type: String,
-        trim: true,
-        default: ''
-    },
-
-    postalCode: {
         type: String,
         trim: true,
         default: ''
@@ -89,24 +77,63 @@ const userSchema = new mongoose.Schema({
     updatedAt: {
         type: Date,
         default: Date.now
-    }
+    },
+
+    // ============================================
+    // CUSTOMER PROFILE (used to auto-fill invoices)
+    // ============================================
+    profile: {
+        passportUrl: { type: String, default: '' }, // compulsory for profile completion
+        companyName: { type: String, default: '', trim: true },
+        legalName: { type: String, default: '', trim: true }, // name as per National ID
+        idNumber: { type: String, default: '', trim: true }, // National ID/Passport no
+        postalAddress: { type: String, default: '', trim: true },
+        deliveryDetails: { type: String, default: '', trim: true }
+    },
+
+    // ============================================
+    // CUSTOMER UPLOADS
+    // ============================================
+    uploads: {
+        bankSlips: [
+            {
+                url: { type: String, required: true },
+                uploadedAt: { type: Date, default: Date.now }
+            }
+        ], // minimum 3 uploads (enforced in UI/validation where needed)
+        consigneeDocUrl: { type: String, default: '' }, // ID/Passport/COI/BR cert
+        pinDocUrl: { type: String, default: '' } // KRA PIN doc
+    },
+
+    // ============================================
+    // ACCOUNT DETAILS TABLE (8 columns)
+    // ============================================
+    accountDetails: [
+        {
+            carStockNo: { type: String, default: '', trim: true },
+            priceSoldKsh: { type: Number, default: 0 },
+            receiveDate: { type: Date, default: null },
+            firstPayment: { type: Number, default: 0 },
+            secondPayment: { type: Number, default: 0 },
+            thirdPayment: { type: Number, default: 0 },
+            discountApplied: { type: Number, default: 0 },
+            balance: { type: Number, default: 0 },
+            _id: { type: mongoose.Schema.Types.ObjectId, auto: true }
+        }
+    ]
 });
 
-// Hash password before saving
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function() {
     // Only hash if password is modified
-    if (!this.isModified('password')) return next();
-    
-    try {
-        console.log('🔐 [PASSWORD HASH] Hashing password for user:', this.email);
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        console.log('�� [PASSWORD HASH] Password hashed successfully');
-        next();
-    } catch (error) {
-        console.error('❌ [PASSWORD HASH ERROR]:', error);
-        next(error);
+    if (!this.isModified('password')) {
+        console.log('⏭️  [PASSWORD HASH] Password not modified, skipping hash');
+        return;
     }
+
+    console.log('🔐 [PASSWORD HASH] Hashing password for user:', this.email);
+    const salt = await bcrypt.genSalt(10);
+    this.password = await bcrypt.hash(this.password, salt);
+    console.log('✅ [PASSWORD HASH] Password hashed successfully');
 });
 
 // Method to compare passwords
@@ -127,7 +154,6 @@ userSchema.methods.toJSON = function() {
 };
 
 // Index for faster queries
-userSchema.index({ email: 1 });
 userSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('User', userSchema);

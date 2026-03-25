@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Profile - Tronex</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+    .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
+    .top h1{margin:0;font-size:26px}
+    .muted{color:rgba(0,0,0,.68)}
+    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
+    @media (max-width:1050px){.grid{grid-template-columns:1fr}}
+    .card{background:#fff;border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:16px;box-shadow:0 10px 26px rgba(0,0,0,.06)}
+    .card h2{margin:0 0 10px}
+    .fg{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+    .fg label{font-weight:800;color:#111}
+    .fg input,.fg textarea{padding:11px 12px;border:1px solid rgba(0,0,0,.12);border-radius:10px;outline:none}
+    .fg input:focus,.fg textarea:focus{border-color:#667eea;box-shadow:0 0 0 4px rgba(102,126,234,.18)}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:720px){.row{grid-template-columns:1fr}}
+    .btn{border:none;border-radius:10px;padding:11px 12px;font-weight:900;cursor:pointer}
+    .btn-primary{background:#667eea;color:#fff}
+    .btn-ghost{background:#fff;border:1px solid rgba(0,0,0,.14)}
+    .msg{display:none;margin:10px 0 0;padding:10px 12px;border-radius:10px}
+    .msg.error{display:block;background:#ffe8e8;color:#8a1f1f;border:1px solid #ffd0d0}
+    .msg.success{display:block;background:#e8fff1;color:#0f5a2b;border:1px solid #bff2d2}
+    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
+    th,td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,.08);font-size:13px;vertical-align:top}
+    th{text-align:left;color:#444;font-size:12px;text-transform:uppercase;letter-spacing:.04em;background:#f6f7fb}
+    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;background:#f3f4ff;border:1px solid rgba(102,126,234,.25);font-weight:900;color:#2d2b7a}
+    .uploads-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    @media (max-width:900px){.uploads-grid{grid-template-columns:1fr}}
+    .filebox{border:1px dashed rgba(0,0,0,.2);border-radius:12px;padding:12px;background:#fafafa}
+    .filebox small{display:block;margin-top:6px;color:rgba(0,0,0,.62)}
+    .list{margin:8px 0 0;padding-left:18px}
+    .list li{margin:6px 0}
+    .mt10{margin-top:10px}
+    .mt12{margin-top:12px}
+    .mt14{margin-top:14px}
+    .mt0{margin-top:0}
+    .mtn6{margin-top:-6px}
+    .mb14{margin-bottom:14px}
+    .hr{border:none;border-top:1px solid rgba(0,0,0,.08);margin:14px 0}
+    .no-mb{margin-bottom:0}
+    .overflow-auto{overflow:auto}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="top">
+      <div>
+        <h1>My Profile</h1>
+        <div class="pill">Complete your profile to auto-fill invoices</div>
+        <p class="muted mt10">Passport upload is compulsory.</p>
+      </div>
+      <a class="btn btn-ghost" href="/">← Back to site</a>
+    </div>
+
+    <div id="msg" class="msg"></div>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Profile details</h2>
+        <form id="profileForm">
+          <div class="uploads-grid">
+            <div class="filebox">
+              <div class="fg no-mb">
+                <label for="passportFile">Passport upload *</label>
+                <input id="passportFile" type="file" accept="image/*,application/pdf" required>
+                <small id="passportStatus">No passport uploaded yet.</small>
+              </div>
+            </div>
+            <div class="filebox">
+              <div class="fg no-mb">
+                <label for="companyName">Company name (if any)</label>
+                <input id="companyName" placeholder="Optional">
+                <small class="muted">Leave blank if not applicable.</small>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt12">
+            <div class="fg">
+              <label for="legalName">Your Name (As in National ID)</label>
+              <input id="legalName" placeholder="e.g., Faith Muthoni">
+            </div>
+            <div class="fg">
+              <label for="idNumber">National ID/Passport no</label>
+              <input id="idNumber" placeholder="ID/Passport number">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="fg">
+              <label for="country">Country</label>
+              <input id="country" placeholder="Kenya">
+            </div>
+            <div class="fg">
+              <label for="mobileNumber">Mobile no</label>
+              <input id="mobileNumber" placeholder="0712345678">
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="fg">
+              <label for="email">Email</label>
+              <input id="email" type="email" placeholder="name@email.com">
+            </div>
+            <div class="fg">
+              <label for="postalAddress">Postal address</label>
+              <input id="postalAddress" placeholder="P.O. Box ...">
+            </div>
+          </div>
+
+          <div class="fg">
+            <label for="deliveryDetails">Delivery details</label>
+            <textarea id="deliveryDetails" rows="3" placeholder="Where and how you want delivery handled..."></textarea>
+          </div>
+
+          <div class="fg">
+            <label for="newPassword">Password (set/replace)</label>
+            <input id="newPassword" type="password" minlength="6" placeholder="Leave blank to keep current password">
+          </div>
+
+          <button class="btn btn-primary" type="submit">Save profile</button>
+        </form>
+      </section>
+
+      <aside class="card">
+        <h2>Account Details</h2>
+        <p class="muted mtn6">Your purchases and payment schedule.</p>
+        <div class="mt10 overflow-auto">
+          <table aria-label="Account details">
+            <thead>
+              <tr>
+                <th>Car Stock No</th>
+                <th>Price Sold (KSH)</th>
+                <th>Receive Date</th>
+                <th>1st Payment</th>
+                <th>2nd Payment</th>
+                <th>3rd Payment</th>
+                <th>Discount applied</th>
+                <th>Balance</th>
+              </tr>
+            </thead>
+            <tbody id="accountRows">
+              <tr><td colspan="8" class="muted">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <hr class="hr">
+
+        <h2>Customer Uploads</h2>
+        <div class="filebox">
+          <div class="fg no-mb">
+            <label for="bankSlips">Bank payment slips (min 3 uploads)</label>
+            <input id="bankSlips" type="file" multiple accept="image/*,application/pdf">
+            <small id="bankSlipsStatus">No slips uploaded yet.</small>
+          </div>
+          <ul id="bankSlipsList" class="list"></ul>
+        </div>
+
+        <div class="uploads-grid mt12">
+          <div class="filebox">
+            <div class="fg no-mb">
+              <label for="consigneeDoc">Consignee document</label>
+              <input id="consigneeDoc" type="file" accept="image/*,application/pdf">
+              <small id="consigneeStatus">Not uploaded.</small>
+            </div>
+          </div>
+          <div class="filebox">
+            <div class="fg no-mb">
+              <label for="pinDoc">Relevant PIN document</label>
+              <input id="pinDoc" type="file" accept="image/*,application/pdf">
+              <small id="pinStatus">Not uploaded.</small>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/js/my-profile.js"></script>
+</body>
+</html>
+

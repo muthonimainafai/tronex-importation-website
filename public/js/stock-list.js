@@ -204,16 +204,22 @@ function displayCars() {
             statusText = '✕ Sold';
         }
 
+        const thumbSrc = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
+        const safeThumb = String(thumbSrc).replace(/"/g, '&quot;');
+
         return `
             <div class="car-card">
                 <div class="car-image-container" style="background: ${car.gradientColor}">
-                    <i class="fas fa-car-side"></i>
+                    ${thumbSrc
+                        ? `<img src="${safeThumb}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder-car.svg'">`
+                        : '<i class="fas fa-car-side"></i>'}
                     <span class="badge">${car.badge}</span>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="car-details">
                     <h3 class="car-title">${car.name}</h3>
                     <p class="car-make-model">${car.make} ${car.model}</p>
+                    <p class="car-make-model"><strong>StockID:</strong> ${car.internalStockNumber || 'N/A'}</p>
                     <span class="car-price">$${car.price.toLocaleString()}</span>
                     <div class="car-specs-row">
                         <div class="spec-item">
@@ -291,6 +297,7 @@ function openCarModal(carId) {
     document.getElementById('modalYear').textContent = car.year;
     document.getElementById('modalMileage').textContent = `${car.mileage.toLocaleString()} km`;
     document.getElementById('modalTransmission').textContent = car.transmission || 'N/A';
+    document.getElementById('modalStockId').textContent = car.internalStockNumber || 'N/A';
     
     document.getElementById('modalType').textContent = car.type || 'N/A';
     document.getElementById('modalBodyType').textContent = car.bodyType || 'N/A';
@@ -357,9 +364,4 @@ function resetAllFilters() {
     });
     filteredCars = [...allCars];
     applySorting();
-}
-// View car details in full page
-function viewCarDetails(carId) {
-    console.log('👁️ Viewing car details:', carId);
-    window.location.href = `/car/${carId}`;
 }

@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment - <%= car.make %> <%= car.model %> | Tronex</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/invoice.css">
+  <style>
+    .pay-wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+    .pay-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+    .pay-top h1{margin:0;font-size:22px}
+    .pay-note{color:rgba(0,0,0,.72);margin:0}
+    .btn-back{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.12);background:#fff;text-decoration:none;color:#111;font-weight:800}
+    .dl-wrap{display:flex;justify-content:flex-end;margin:10px 0 14px}
+  </style>
+</head>
+<body>
+  <div class="pay-wrap">
+    <div class="pay-top">
+      <div>
+        <h1>Payment</h1>
+        <p class="pay-note">Review the invoice below and proceed with payment using the provided bank/M-Pesa details.</p>
+      </div>
+      <a class="btn-back" href="/car/<%= car._id %>">← Back to car</a>
+    </div>
+
+    <div class="dl-wrap">
+      <a class="btn-back" href="/api/cars/<%= car._id %>/invoice/pdf">Download Invoice PDF</a>
+    </div>
+    <%- include('partials/tronex-invoice.html', { car, invoice, customer }) %>
+  </div>
+
+  <script src="/js/auth.js"></script>
+</body>
+</html>
+

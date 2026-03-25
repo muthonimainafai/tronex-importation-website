@@ -109,8 +109,8 @@
                     <legend class="form-section-title">📦 Stock Information</legend>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="internalStockNumber">Internal Stock # (Auto-Generated)</label>
-                            <input type="text" id="internalStockNumber" disabled placeholder="26.00200" class="form-input-disabled">
+                            <label for="internalStockNumber">StockID (Auto-Generated)</label>
+                            <input type="text" id="internalStockNumber" disabled placeholder="TRON26-00200" class="form-input-disabled">
                         </div>
                         <div class="form-group">
                             <label for="externalStockNumber">External Stock # (From Source)</label>
@@ -300,6 +300,91 @@
                     <div class="form-group form-group-full">
                         <label for="features">Features (comma separated)</label>
                         <textarea id="features" rows="2" placeholder="e.g., Air Conditioning, Power Steering, ABS, Electronic Windows, Leather Seats, etc."></textarea>
+                    </div>
+                </fieldset>
+
+                <!-- Invoice Costs Section (KES) -->
+                <fieldset class="form-section">
+                    <legend class="form-section-title">🧾 Invoice Costs (Admin fills Cost)</legend>
+                    <p style="margin:-6px 0 10px;color:#7f8c8d">
+                        Descriptions are fixed. Fill only the <strong>Cost</strong>. Totals are calculated automatically and shown on the car invoice.
+                    </p>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Cost insurance and Freight (CIF) - KES</label>
+                            <input type="number" id="inv_cif" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Port/Cfs Charges - KES</label>
+                            <input type="number" id="inv_portCfsCharges" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Shipping line/D.O - KES</label>
+                            <input type="number" id="inv_shippingLineDo" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Radiation - KES</label>
+                            <input type="number" id="inv_radiation" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>MSS Levy - KES</label>
+                            <input type="number" id="inv_mssLevy" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Clearing service Charge - KES</label>
+                            <input type="number" id="inv_clearingServiceCharge" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>KG Plate (cic ins. comp.insured) - KES</label>
+                            <input type="number" id="inv_kgPlate" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>NTSA Sticker - KES</label>
+                            <input type="number" id="inv_ntsaSticker" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Handling Costs - KES</label>
+                            <input type="number" id="inv_handlingCosts" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Duty Payable - KES</label>
+                            <input type="number" id="inv_dutyPayable" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Discount - KES</label>
+                            <input type="number" id="inv_discount" step="0.01" min="0" placeholder="0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>Itemized Need Analysis Total (auto)</label>
+                            <input type="text" id="inv_itemizedNeedTotal" disabled class="form-input-disabled" placeholder="KES 0.00">
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group" style="flex:1">
+                            <label>Itemized Duty &amp; Taxes Total (auto)</label>
+                            <input type="text" id="inv_itemizedDutyTaxesTotal" disabled class="form-input-disabled" placeholder="KES 0.00">
+                        </div>
+                        <div class="form-group" style="flex:1">
+                            <label>TOTAL COSTS (auto)</label>
+                            <input type="text" id="inv_totalCosts" disabled class="form-input-disabled" placeholder="KES 0.00">
+                        </div>
                     </div>
                 </fieldset>
 

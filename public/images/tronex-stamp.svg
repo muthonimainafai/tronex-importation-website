@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="220" height="220" viewBox="0 0 220 220">
+  <defs>
+    <path id="circlePath" d="M110,20 a90,90 0 1,1 0,180 a90,90 0 1,1 0,-180" />
+  </defs>
+
+  <circle cx="110" cy="110" r="92" fill="none" stroke="#b21f2d" stroke-width="8"/>
+  <circle cx="110" cy="110" r="74" fill="none" stroke="#b21f2d" stroke-width="3" stroke-dasharray="3 6"/>
+
+  <text fill="#b21f2d" font-family="Segoe UI, Arial, sans-serif" font-weight="800" font-size="14" letter-spacing="2">
+    <textPath href="#circlePath" startOffset="50%" text-anchor="middle">
+      TRONEX CAR IMPORTERS LTD " MOMBASA " KENYA
+    </textPath>
+  </text>
+
+  <g transform="translate(110 110)">
+    <text x="0" y="-8" text-anchor="middle" fill="#b21f2d" font-family="Segoe UI, Arial, sans-serif" font-weight="900" font-size="18">
+      TRONEX
+    </text>
+    <text x="0" y="14" text-anchor="middle" fill="#b21f2d" font-family="Segoe UI, Arial, sans-serif" font-weight="800" font-size="12" letter-spacing="2">
+      OFFICIAL STAMP
+    </text>
+  </g>
+</svg>
+

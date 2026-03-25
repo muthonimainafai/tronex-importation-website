@@ -33,42 +33,16 @@ const invoiceSchema = new mongoose.Schema({
     },
 
     // Car Details (Snapshot from Car model)
+    // Use Mixed to avoid schema/version mismatches causing "cast to string" errors.
     carDetails: {
-        make: String,
-        model: String,
-        year: Number,
-        internalStockNumber: String,
-        externalStockNumber: String,
-        price: Number,
-        type: String,
-        bodyType: String,
-        color: String,
-        interiorColor: String,
-        transmission: String,
-        fuel: String,
-        drive: String,
-        engineCapacity: String,
-        mileage: Number,
-        doors: Number,
-        seats: Number,
-        trunk: String,
-        registration: String,
-        description: String,
-        _id: mongoose.Schema.Types.ObjectId
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     },
 
     // Customer Details (Will be filled from User model when logged in)
     customerDetails: {
-        customerId: String,
-        firstName: String,
-        lastName: String,
-        email: String,
-        phone: String,
-        mobileNumber: String,
-        address: String,
-        city: String,
-        country: String,
-        postalCode: String
+        type: mongoose.Schema.Types.Mixed,
+        default: {}
     },
 
     // Invoice Line Items (Admin fills these)
@@ -182,38 +156,33 @@ const invoiceSchema = new mongoose.Schema({
     }
 });
 
-// Pre-save middleware to calculate totals
-invoiceSchema.pre('save', async function(next) {
-    try {
-        // Generate invoice number if not exists
-        if (!this.invoiceNumber) {
-            const count = await mongoose.model('Invoice').countDocuments();
-            const year = new Date().getFullYear();
-            const month = String(new Date().getMonth() + 1).padStart(2, '0');
-            const day = String(new Date().getDate()).padStart(2, '0');
-            this.invoiceNumber = `INV-${year}${month}${day}-${String(count + 1).padStart(4, '0')}`;
-            console.log('✅ [INVOICE NUMBER] Generated:', this.invoiceNumber);
-        }
-
-        // Calculate subtotal and total
-        this.subtotal = this.invoiceItems.reduce((sum, item) => sum + (item.cost || 0), 0);
-        this.totalCost = this.subtotal + (this.carDetails?.price || 0);
-
-        console.log('✅ [INVOICE TOTALS] Subtotal:', this.subtotal, 'Total:', this.totalCost);
-
-        this.updatedAt = new Date();
-        next();
-    } catch (error) {
-        console.error('❌ [INVOICE PRE-SAVE ERROR]:', error);
-        next(error);
+// Generate required fields before validation runs
+invoiceSchema.pre('validate', async function() {
+    if (!this.invoiceNumber) {
+        const count = await mongoose.model('Invoice').countDocuments();
+        const year = new Date().getFullYear();
+        const month = String(new Date().getMonth() + 1).padStart(2, '0');
+        const day = String(new Date().getDate()).padStart(2, '0');
+        this.invoiceNumber = `INV-${year}${month}${day}-${String(count + 1).padStart(4, '0')}`;
+        console.log('✅ [INVOICE NUMBER] Generated:', this.invoiceNumber);
     }
 });
 
+// Pre-save middleware to calculate totals
+invoiceSchema.pre('save', async function() {
+    // Calculate subtotal and total
+    this.subtotal = this.invoiceItems.reduce((sum, item) => sum + (item.cost || 0), 0);
+    this.totalCost = this.subtotal + (this.carDetails?.price || 0);
+
+    console.log('✅ [INVOICE TOTALS] Subtotal:', this.subtotal, 'Total:', this.totalCost);
+
+    this.updatedAt = new Date();
+});
+
 // Index for faster queries
-invoiceSchema.index({ invoiceNumber: 1 });
 invoiceSchema.index({ carId: 1 });
 invoiceSchema.index({ customerId: 1 });
 invoiceSchema.index({ createdAt: -1 });
 invoiceSchema.index({ status: 1 });
 
-module.exports = mongoose.model('Invoice', invoiceSchema);
+module.exports = mongoose.models.Invoice || mongoose.model('Invoice', invoiceSchema);

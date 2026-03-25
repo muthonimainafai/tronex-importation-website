@@ -1,163 +1,194 @@
 const mongoose = require('mongoose');
 
 const carSchema = new mongoose.Schema({
-    carId: {
-        type: String,
-        unique: true
-    },
+    // MongoDB will auto-create _id as ObjectId
     
-    // Stock Numbers
+    // Stock Numbers (these are NOT the _id)
     internalStockNumber: {
         type: String,
         unique: true,
-        required: true
+        required: [true, 'Internal stock number is required'],
+        trim: true
     },
+
     externalStockNumber: {
         type: String,
+        trim: true,
         default: ''
     },
-    
-    // Basic Info (Auto-generated name from make & model)
-    name: {
-        type: String,
-        required: true
-    },
+
+    // Vehicle Identification
     make: {
         type: String,
-        required: true
+        required: [true, 'Make is required'],
+        trim: true
     },
+
     model: {
         type: String,
-        required: true
+        required: [true, 'Model is required'],
+        trim: true
     },
+
     year: {
         type: Number,
-        required: true
+        required: [true, 'Year is required']
     },
-    
+
     // Pricing & Availability
     price: {
         type: Number,
-        required: true
+        required: [true, 'Price is required']
     },
+
     availability: {
         type: String,
         enum: ['Available', 'Reserved', 'Sold'],
         default: 'Available'
     },
-    
-    // Physical Specs
+
+    // Physical Specifications
     type: {
         type: String,
-        enum: ['Sedan', 'SUV', 'Truck', 'Van', 'Coupe', 'Hatchback'],
-        default: 'Sedan'
+        required: [true, 'Type is required']
     },
+
     bodyType: {
         type: String,
         default: ''
     },
+
     color: {
         type: String,
-        required: true
+        required: [true, 'Color is required']
     },
+
     interiorColor: {
         type: String,
         default: ''
     },
+
     doors: {
         type: Number,
         default: 4
     },
+
     seats: {
         type: Number,
         default: 5
     },
-    
+
     // Engine & Transmission
     mileage: {
         type: Number,
-        required: true
+        required: [true, 'Mileage is required']
     },
+
     transmission: {
         type: String,
-        enum: ['Automatic', 'Manual'],
-        default: 'Automatic'
+        required: [true, 'Transmission is required']
     },
+
     fuel: {
         type: String,
-        enum: ['Petrol', 'Diesel', 'Hybrid', 'Electric'],
-        default: 'Petrol'
+        required: [true, 'Fuel type is required']
     },
+
+    drive: {
+        type: String,
+        default: ''
+    },
+
     engineCapacity: {
         type: String,
         default: ''
     },
-    drive: {
-        type: String,
-        enum: ['2WD', '4WD', 'AWD'],
-        default: '2WD'
-    },
-    
-    // Vehicle Dimensions
+
     trunk: {
         type: String,
         default: ''
     },
-    
-    // Registration
+
     registration: {
         type: String,
         default: ''
     },
-    
+
     // Description & Details
     description: {
         type: String,
-        required: true
+        default: ''
     },
-    highlights: {
-        type: [String],
-        default: []
-    },
-    
-    // Features Array
-    features: {
-        type: [String],
-        default: []
-    },
-    
+
+    highlights: [String],
+    features: [String],
+
     // Images
-    images: {
-        type: [String],
-        default: []
-    },
     mainImage: {
         type: String,
         default: ''
     },
-    
+
+    images: [String],
+
     // Categorization
     badge: {
         type: String,
-        enum: ['Featured', 'New Arrival', 'Hot Deal'],
-        default: 'Featured'
+        default: ''
     },
-    
-    // Styling
+
     gradientColor: {
         type: String,
         default: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     },
-    
+
     // Timestamps
     createdAt: {
         type: Date,
         default: Date.now
     },
+
     updatedAt: {
         type: Date,
         default: Date.now
+    },
+
+    // ==================== INVOICE (PER-CAR) ====================
+    // Admin fills the individual "Cost" values in Manage Cars.
+    // Descriptions remain fixed in the UI; totals are computed at render-time.
+    invoiceCosts: {
+        currency: { type: String, default: 'KES', trim: true },
+        // Itemized Need Analysis costs
+        cif: { type: Number, default: null },
+        portCfsCharges: { type: Number, default: null },
+        shippingLineDo: { type: Number, default: null },
+        radiation: { type: Number, default: null },
+        mssLevy: { type: Number, default: null },
+        clearingServiceCharge: { type: Number, default: null },
+        kgPlate: { type: Number, default: null },
+        ntsaSticker: { type: Number, default: null },
+        handlingCosts: { type: Number, default: null },
+
+        // Duty / taxes
+        dutyPayable: { type: Number, default: null },
+
+        // Discount (optional)
+        discount: { type: Number, default: null }
     }
 });
+
+// Add computed field for car name
+carSchema.virtual('name').get(function() {
+    return `${this.make} ${this.model}`;
+});
+
+// Ensure virtuals are included in JSON
+carSchema.set('toJSON', { virtuals: true });
+
+// Index for faster queries
+carSchema.index({ make: 1 });
+carSchema.index({ model: 1 });
+carSchema.index({ availability: 1 });
+carSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.models.Car || mongoose.model('Car', carSchema);
