@@ -20,12 +20,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Buy Now -> Payment page (requires login)
 function buyNow(carId) {
     const token = localStorage.getItem('tronex_token');
+    const ts = Date.now(); // cache-bust payment page HTML
     if (!token) {
-        const next = `/payment/${encodeURIComponent(carId)}`;
-        window.location.href = '/login?next=' + encodeURIComponent(next);
+        const next = `/payment-details/${encodeURIComponent(carId)}?ts=${ts}`;
+        window.location.replace('/login?next=' + encodeURIComponent(next));
         return;
     }
-    window.location.href = `/payment/${encodeURIComponent(carId)}`;
+    window.location.replace(`/payment-details/${encodeURIComponent(carId)}?ts=${ts}`);
 }
 
 // Navigate to previous image

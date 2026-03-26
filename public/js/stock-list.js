@@ -2,6 +2,54 @@ let allCars = [];
 let filteredCars = [];
 let selectedMake = null;
 
+function sanitizeText(value, fallback = '') {
+    if (value === null || value === undefined) return fallback;
+    const text = String(value).trim();
+    if (!text || text.toLowerCase() === 'undefined' || text.toLowerCase() === 'null') {
+        return fallback;
+    }
+    return text;
+}
+
+function toNumericValue(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const cleaned = String(value ?? '').replace(/[^\d.-]/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatKsh(value) {
+    return `KSH ${toNumericValue(value).toLocaleString()}`;
+}
+
+function getInvoiceTotalFromCosts(invoiceCosts) {
+    if (!invoiceCosts || typeof invoiceCosts !== 'object') return null;
+
+    const itemizedKeys = [
+        'cif',
+        'portCfsCharges',
+        'shippingLineDo',
+        'radiation',
+        'mssLevy',
+        'clearingServiceCharge',
+        'kgPlate',
+        'ntsaSticker',
+        'handlingCosts'
+    ];
+
+    const hasAnyInvoiceValue = itemizedKeys.some((key) => toNumericValue(invoiceCosts[key]) > 0)
+        || toNumericValue(invoiceCosts.dutyPayable) > 0
+        || toNumericValue(invoiceCosts.discount) > 0;
+
+    if (!hasAnyInvoiceValue) return null;
+
+    const itemizedTotal = itemizedKeys.reduce((sum, key) => sum + toNumericValue(invoiceCosts[key]), 0);
+    const dutyPayable = toNumericValue(invoiceCosts.dutyPayable);
+    const discount = toNumericValue(invoiceCosts.discount);
+    const total = Math.max(0, itemizedTotal + dutyPayable - discount);
+    return total;
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
     loadCars();
@@ -193,6 +241,17 @@ function displayCars() {
     noResults.style.display = 'none';
 
     carsGrid.innerHTML = filteredCars.map(car => {
+        const carName = sanitizeText(
+            car.name,
+            [sanitizeText(car.make), sanitizeText(car.model)].filter(Boolean).join(' ') || 'Unnamed Vehicle'
+        );
+        const invoiceTotal = getInvoiceTotalFromCosts(car.invoiceCosts);
+        const displayPrice = invoiceTotal !== null ? invoiceTotal : toNumericValue(car.price);
+        const stockId = sanitizeText(car.internalStockNumber, 'N/A');
+        const mileage = toNumericValue(car.mileage);
+        const transmission = sanitizeText(car.transmission, 'N/A');
+        const description = sanitizeText(car.description, 'No description available');
+
         let statusClass = 'available';
         let statusText = '✓ Available';
 
@@ -217,28 +276,27 @@ function displayCars() {
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="car-details">
-                    <h3 class="car-title">${car.name}</h3>
-                    <p class="car-make-model">${car.make} ${car.model}</p>
-                    <p class="car-make-model"><strong>StockID:</strong> ${car.internalStockNumber || 'N/A'}</p>
-                    <span class="car-price">$${car.price.toLocaleString()}</span>
+                    <h3 class="car-title">${carName}</h3>
+                    <p class="car-make-model"><strong>StockID:</strong> ${stockId}</p>
+                    <span class="car-price">${formatKsh(displayPrice)}</span>
                     <div class="car-specs-row">
                         <div class="spec-item">
                             <div class="spec-icon"><i class="fas fa-calendar-alt"></i></div>
                             <div class="spec-label">Year</div>
-                            <div class="spec-value">${car.year}</div>
+                            <div class="spec-value">${sanitizeText(car.year, 'N/A')}</div>
                         </div>
                         <div class="spec-item">
                             <div class="spec-icon"><i class="fas fa-tachometer-alt"></i></div>
                             <div class="spec-label">Mileage</div>
-                            <div class="spec-value">${(car.mileage / 1000).toFixed(0)}k km</div>
+                            <div class="spec-value">${(mileage / 1000).toFixed(0)}k km</div>
                         </div>
                         <div class="spec-item">
                             <div class="spec-icon"><i class="fas fa-gas-pump"></i></div>
                             <div class="spec-label">Trans</div>
-                            <div class="spec-value">${car.transmission}</div>
+                            <div class="spec-value">${transmission}</div>
                         </div>
                     </div>
-                    <p class="car-desc">${car.description}</p>
+                    <p class="car-desc">${description}</p>
                     <div class="car-actions">
                         <button class="btn-view-details" onclick="viewCarDetails('${car._id}')">
                             <i class="fas fa-eye"></i> View Full Details
@@ -290,9 +348,19 @@ function openCarModal(carId) {
     document.getElementById('carStatus').className = `status-badge ${statusClass}`;
     document.getElementById('carStatus').textContent = statusText;
 
-    document.getElementById('modalCarName').textContent = `${car.make} ${car.model}`;
-    document.getElementById('modalCarSubtitle').textContent = `${car.make} ${car.model} • ${car.type}`;
-    document.getElementById('modalCarPrice').textContent = `$${car.price.toLocaleString()}`;
+    const modalName = sanitizeText(
+        car.name,
+        [sanitizeText(car.make), sanitizeText(car.model)].filter(Boolean).join(' ') || 'Unnamed Vehicle'
+    );
+    const modalMakeModel = [sanitizeText(car.make), sanitizeText(car.model)].filter(Boolean).join(' ');
+    const modalType = sanitizeText(car.type);
+    const subtitleParts = [modalMakeModel, modalType].filter(Boolean);
+
+    document.getElementById('modalCarName').textContent = modalName;
+    document.getElementById('modalCarSubtitle').textContent = subtitleParts.length ? subtitleParts.join(' • ') : 'Vehicle details';
+    const modalInvoiceTotal = getInvoiceTotalFromCosts(car.invoiceCosts);
+    const modalDisplayPrice = modalInvoiceTotal !== null ? modalInvoiceTotal : toNumericValue(car.price);
+    document.getElementById('modalCarPrice').textContent = formatKsh(modalDisplayPrice);
 
     document.getElementById('modalYear').textContent = car.year;
     document.getElementById('modalMileage').textContent = `${car.mileage.toLocaleString()} km`;

@@ -4,7 +4,7 @@
     const toName = c ? ((c.profile?.legalName || '').trim() || `${c.firstName || ''} ${c.lastName || ''}`.trim()) : '';
     const toEmail = c ? (c.email || '') : '';
     const toMobile = c ? (c.mobileNumber || '') : '';
-    const customerId = c ? (c._id || c.id || '') : '';
+    const customerId = c ? (c.customerId || c._id || c.id || '') : '';
   %>
   <div class="trx-letterhead">
     <div class="trx-letterhead-left">
@@ -13,9 +13,8 @@
       <div class="trx-muted">Mombasa, Kenya</div>
     </div>
     <div class="trx-letterhead-right">
-      <div class="trx-muted">Mobile: __________________</div>
-      <div class="trx-muted">Email: ___________________</div>
-      <div class="trx-muted">Web: _____________________</div>
+      <div class="trx-muted">Mobile: <%= toMobile || '__________________' %></div>
+      <div class="trx-muted">Email: <%= toEmail || '__________________' %></div>
     </div>
   </div>
 
@@ -32,7 +31,7 @@
       <div><strong>Expiry Date:</strong> __________________</div>
     </div>
     <div class="trx-meta-row">
-      <div><strong>To:</strong> <%= toName || '__________________' %></div>
+      <div><strong>Customer:</strong> <%= toName || '__________________' %></div>
       <div><strong>Mobile No:</strong> <%= toMobile || '__________________' %></div>
       <div><strong>Email:</strong> <%= toEmail || '__________________' %></div>
     </div>

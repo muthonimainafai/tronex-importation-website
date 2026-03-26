@@ -3,9 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
   <title>Payment - <%= car.make %> <%= car.model %> | Tronex</title>
   <link rel="stylesheet" href="/css/style.css">
-  <link rel="stylesheet" href="/css/invoice.css">
+  <link rel="stylesheet" href="/css/payment-details.css">
   <style>
     .pay-wrap{max-width:1200px;margin:28px auto;padding:0 16px}
     .pay-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
@@ -19,19 +22,27 @@
   <div class="pay-wrap">
     <div class="pay-top">
       <div>
-        <h1>Payment</h1>
-        <p class="pay-note">Review the invoice below and proceed with payment using the provided bank/M-Pesa details.</p>
+        <h1>Payment Details</h1>
+        <p class="pay-note">Review the bank and M-Pesa details below, then proceed with payment for this vehicle.</p>
       </div>
       <a class="btn-back" href="/car/<%= car._id %>">← Back to car</a>
     </div>
 
     <div class="dl-wrap">
-      <a class="btn-back" href="/api/cars/<%= car._id %>/invoice/pdf">Download Invoice PDF</a>
+      <a class="btn-back" href="/api/cars/<%= car._id %>/invoice/pdf">Download PDF</a>
     </div>
-    <%- include('partials/tronex-invoice.html', { car, invoice, customer }) %>
+    <%- include('partials/tronex-payment-details.html', { car, invoice, customer }) %>
+
+    <div class="generate-invoice-actions">
+      <button class="btn-generate-invoice" type="button" onclick="generateInvoiceToEmail('<%= car._id %>')">
+        Generate Invoice
+      </button>
+      <div class="generate-invoice-msg" id="generateInvoiceMsg"></div>
+    </div>
   </div>
 
   <script src="/js/auth.js"></script>
+  <script src="/js/payment.js?v=20260325"></script>
 </body>
 </html>
 

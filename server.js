@@ -1,6 +1,10 @@
-const express = require('express');
-const dotenv = require('dotenv');
 const path = require('path');
+const dotenv = require('dotenv');
+// Always load .env next to server.js (cwd-independent — npm/Cursor may start from another folder).
+// quiet:true keeps startup logs clean by hiding dotenv tips.
+dotenv.config({ path: path.join(__dirname, '.env'), quiet: true });
+
+const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const multer = require('multer');
@@ -76,8 +80,6 @@ async function optimizeImage(filePath) {
         return path.basename(filePath);
     }
 }
-// Load environment variables
-dotenv.config();
 
 const app = express();
 
@@ -94,6 +96,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 console.log('📄 Views directory:', path.join(__dirname, 'views'));
 app.set('view engine', 'html');
 app.set('views', path.join(__dirname, 'views'));
+// Ensure template edits (EJS HTML views/partials) are picked up immediately.
+// Express otherwise may cache rendered templates depending on environment.
+app.set('view cache', false);
 app.engine('html', require('ejs').renderFile);
 
 // ==================== ROUTES ====================
@@ -250,6 +255,18 @@ function toNumOrNull(v) {
   return Number.isFinite(n) ? n : null;
 }
 
+function toFiniteNumber(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : NaN;
+  if (v === null || v === undefined) return NaN;
+  let s = String(v).trim();
+  if (!s) return NaN;
+  s = s.replace(/,/g, '');
+  s = s.replace(/[^0-9.\-]/g, '');
+  if (!s || s === '.' || s === '-' || s === '-.') return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
 function buildCarInvoiceViewModel(car) {
   const costs = car?.invoiceCosts || {};
   const itemized = [
@@ -288,6 +305,40 @@ function buildCarInvoiceViewModel(car) {
       paybill: '972900'
     }
   };
+}
+
+function toNumericValue(v) {
+  if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+  const cleaned = String(v ?? '').replace(/[^\d.-]/g, '');
+  const parsed = Number(cleaned);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function getDisplayPriceKsh(car) {
+  const costs = car?.invoiceCosts || {};
+  const itemizedKeys = [
+    'cif',
+    'portCfsCharges',
+    'shippingLineDo',
+    'radiation',
+    'mssLevy',
+    'clearingServiceCharge',
+    'kgPlate',
+    'ntsaSticker',
+    'handlingCosts'
+  ];
+
+  const hasAnyInvoiceValue =
+    itemizedKeys.some((k) => toNumericValue(costs[k]) > 0) ||
+    toNumericValue(costs.dutyPayable) > 0 ||
+    toNumericValue(costs.discount) > 0;
+
+  if (!hasAnyInvoiceValue) return toNumericValue(car?.price);
+
+  const itemizedTotal = itemizedKeys.reduce((sum, k) => sum + toNumericValue(costs[k]), 0);
+  const dutyPayable = toNumericValue(costs.dutyPayable);
+  const discount = toNumericValue(costs.discount);
+  return Math.max(0, itemizedTotal + dutyPayable - discount);
 }
 
 
@@ -503,12 +554,21 @@ app.post('/api/admin/cars', async (req, res) => {
           features, images, mainImage, externalStockNumber, invoiceCosts
       } = req.body;
 
+      const parsedYear = Number.parseInt(year, 10);
+      const parsedPrice = toFiniteNumber(price);
+      const parsedMileage = toFiniteNumber(mileage);
+
       // Validation - ONLY required fields
-      if (!make || !model || !year || !price || !mileage || !color || !description) {
+      if (
+          !make || !model || !color || !description ||
+          !Number.isFinite(parsedYear) ||
+          !Number.isFinite(parsedPrice) ||
+          !Number.isFinite(parsedMileage)
+      ) {
           console.log('❌ Validation failed - missing required fields');
           return res.status(400).json({
               success: false,
-              message: 'Please fill in all required fields: make, model, year, price, mileage, color, description'
+              message: 'Please provide valid fields: make, model, year, price, mileage, color, description'
           });
       }
 
@@ -522,17 +582,17 @@ app.post('/api/admin/cars', async (req, res) => {
 
       // Create new car
       const newCar = new Car({
-        carId: `CAR-${Date.now()}`,
+        carId: `CAR-${Date.now()}-${Math.floor(Math.random() * 1000000)}`,
         internalStockNumber,
         externalStockNumber: externalStockNumber || '',
         name,
         make,
         model,
-        year: parseInt(year),
-        price: parseFloat(price),
+        year: parsedYear,
+        price: parsedPrice,
         type: type || 'Sedan',
         bodyType: bodyType || '',
-        mileage: parseInt(mileage),
+        mileage: parsedMileage,
         transmission: transmission || 'Automatic',
         color,
         interiorColor: interiorColor || '',
@@ -585,6 +645,22 @@ app.put('/api/admin/cars/:id', async (req, res) => {
           features, images, mainImage, externalStockNumber, invoiceCosts
       } = req.body;
 
+      const parsedYear = Number.parseInt(year, 10);
+      const parsedPrice = toFiniteNumber(price);
+      const parsedMileage = toFiniteNumber(mileage);
+
+      if (
+          !make || !model || !color || !description ||
+          !Number.isFinite(parsedYear) ||
+          !Number.isFinite(parsedPrice) ||
+          !Number.isFinite(parsedMileage)
+      ) {
+          return res.status(400).json({
+              success: false,
+              message: 'Please provide valid fields: make, model, year, price, mileage, color, description'
+          });
+      }
+
       // Auto-generate car name from make and model
       const name = `${make} ${model}`;
 
@@ -592,11 +668,11 @@ app.put('/api/admin/cars/:id', async (req, res) => {
           name,
           make,
           model,
-          year: parseInt(year),
-          price: parseFloat(price),
+          year: parsedYear,
+          price: parsedPrice,
           type: type || 'Sedan',
           bodyType: bodyType || '',
-          mileage: parseInt(mileage),
+          mileage: parsedMileage,
           transmission: transmission || 'Automatic',
           color,
           interiorColor: interiorColor || '',
@@ -809,6 +885,7 @@ app.get('/car/:id', async (req, res) => {
         }
         const carData = car.toObject();
         carData.internalStockNumber = formatStockId(carData.internalStockNumber);
+        carData.displayPriceKsh = getDisplayPriceKsh(carData);
         res.render('car-details', { car: carData, invoice: buildCarInvoiceViewModel(carData) });
     } catch (error) {
         console.error('Error fetching car details:', error);
@@ -816,9 +893,15 @@ app.get('/car/:id', async (req, res) => {
     }
   });
 
-// Payment page (requires user account)
-app.get('/payment/:id', requireUserPage, async (req, res) => {
+// Payment page (new URL to avoid browser caching/back-forward issues)
+app.get('/payment-details/:id', requireUserPage, async (req, res) => {
   try {
+    // Prevent stale cached HTML after template changes
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('X-Payment-Layout', 'details-v3');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     const car = await Car.findById(req.params.id);
     if (!car) {
       return res.status(404).render('404', { message: 'Car not found' });
@@ -831,6 +914,13 @@ app.get('/payment/:id', requireUserPage, async (req, res) => {
     console.error('Error loading payment page:', error);
     res.status(500).render('error', { message: 'Error loading payment page' });
   }
+});
+
+// Backward-compatible redirect (keeps querystring, but forces the new URL)
+app.get('/payment/:id', requireUserPage, async (req, res) => {
+  const queryIndex = req.originalUrl.indexOf('?');
+  const query = queryIndex !== -1 ? req.originalUrl.slice(queryIndex) : '';
+  return res.redirect(302, `/payment-details/${encodeURIComponent(req.params.id)}${query}`);
 });
 
   // Register routes

@@ -136,7 +136,8 @@ const invoiceSchema = new mongoose.Schema({
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User', // Admin user
-        required: [true, 'Creator ID is required']
+        required: false,
+        default: null
     },
 
     updatedBy: {

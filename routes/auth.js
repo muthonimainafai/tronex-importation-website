@@ -61,6 +61,16 @@ router.post('/api/auth/register', async (req, res) => {
         console.log('📝 [REGISTER] New registration attempt');
         const { firstName, lastName, email, mobileNumber, address, city, country, password, passwordConfirm } = req.body;
 
+        function generateCustomerId() {
+            // Example: CUS-20260325-482193
+            const d = new Date();
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const rand = String(Math.floor(Math.random() * 1000000)).padStart(6, '0');
+            return `CUS-${yyyy}${mm}${dd}-${rand}`;
+        }
+
         // Validation
         if (!firstName || !lastName || !email || !mobileNumber || !password) {
             console.warn('⚠️ [REGISTER] Missing required fields');
@@ -103,6 +113,11 @@ router.post('/api/auth/register', async (req, res) => {
         });
 
         await user.save();
+        // Generate a public customer ID for invoices
+        if (!user.customerId) {
+            user.customerId = generateCustomerId();
+            await user.save();
+        }
         console.log('✅ [REGISTER] User created successfully:', email);
 
         // Generate JWT token
@@ -120,6 +135,7 @@ router.post('/api/auth/register', async (req, res) => {
             token,
             user: {
                 id: user._id,
+                customerId: user.customerId,
                 firstName: user.firstName,
                 lastName: user.lastName,
                 email: user.email,

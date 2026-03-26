@@ -1,12 +1,64 @@
 const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
+const fs = require('fs');
+const path = require('path');
+const ejs = require('ejs');
 const Invoice = require('../models/Invoice');
 const Car = require('../models/car');
 const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 const authRoutes = require('./auth');
 const authenticateToken = authRoutes.authenticateToken;
+let puppeteer = null;
+try {
+    puppeteer = require('puppeteer-core');
+} catch (_) {
+    puppeteer = null;
+}
+let Resend = null;
+try {
+    ({ Resend } = require('resend'));
+} catch (e) {
+    console.warn('⚠️ [INVOICES] resend package not installed. Email sending disabled.');
+}
+
+function getResendClient() {
+    const apiKey = process.env.RESEND_API_KEY;
+    if (!Resend || !apiKey) return null;
+    return new Resend(apiKey);
+}
+
+async function sendInvoiceEmailWithAttachment({ to, subject, text, filename, pdfBuffer }) {
+    const resend = getResendClient();
+    const fromEmail = process.env.EMAIL_FROM;
+
+    if (!resend || !fromEmail) {
+        const missing = [];
+        if (!process.env.RESEND_API_KEY) missing.push('RESEND_API_KEY');
+        if (!fromEmail) missing.push('EMAIL_FROM');
+        throw new Error('Resend not configured. Missing: ' + missing.join(', '));
+    }
+
+    const result = await resend.emails.send({
+        from: fromEmail,
+        to,
+        subject,
+        text,
+        attachments: [
+            {
+                filename,
+                content: pdfBuffer.toString('base64')
+            }
+        ]
+    });
+
+    if (result && result.error) {
+        throw new Error(result.error.message || 'Resend failed to send email');
+    }
+
+    return result && result.data ? result.data : null;
+}
 
 async function resolveCarByAnyId(carId) {
     if (!carId) return null;
@@ -100,6 +152,244 @@ function buildPerCarInvoice(carDoc) {
     };
 }
 
+function resolveBrowserExecutablePath() {
+    const candidates = [
+        process.env.PUPPETEER_EXECUTABLE_PATH,
+        'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+        'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+        'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe'
+    ].filter(Boolean);
+
+    for (const exe of candidates) {
+        if (fs.existsSync(exe)) return exe;
+    }
+    return null;
+}
+
+function buildBuilderLikeInvoiceModel(invoice) {
+    const currency = 'KES';
+    const items = (invoice.invoiceItems || []).map((it) => ({
+        label: it.description || '—',
+        value: Number(it.cost || 0)
+    }));
+
+    const dutyPayable = items
+        .filter((it) => String(it.label || '').toLowerCase().includes('duty payable'))
+        .reduce((sum, it) => sum + Number(it.value || 0), 0);
+
+    const discount = Math.abs(
+        items
+            .filter((it) => String(it.label || '').toLowerCase().includes('discount'))
+            .reduce((sum, it) => sum + Number(it.value || 0), 0)
+    );
+
+    return {
+        currency,
+        items,
+        itemizedNeedAnalysisTotal: Number(invoice.subtotal || 0),
+        itemizedDutyTaxesTotal: dutyPayable,
+        dutyPayable,
+        discount,
+        totalCosts: Number(invoice.totalCost || 0),
+        bank: {
+            bankName: invoice.bankDetails?.bankName || '—',
+            accountName: invoice.bankDetails?.accountName || '—',
+            branchCode: invoice.bankDetails?.branchCode || '—',
+            branch: invoice.bankDetails?.branch || '—',
+            accountNumber: invoice.bankDetails?.accountNumber || '—',
+            swiftCode: invoice.bankDetails?.swiftCode || '—',
+            paybill: invoice.mpesaDetails?.paybillNumber || '—'
+        }
+    };
+}
+
+async function renderInvoiceHtmlFromTemplate(invoice) {
+    const partialPath = path.join(__dirname, '..', 'views', 'partials', 'tronex-invoice.html');
+    const cssPath = path.join(__dirname, '..', 'public', 'css', 'invoice.css');
+    const css = fs.readFileSync(cssPath, 'utf8');
+
+    const htmlFragment = await ejs.renderFile(partialPath, {
+        invoice: buildBuilderLikeInvoiceModel(invoice),
+        car: invoice.carDetails || {},
+        customer: invoice.customerDetails || {}
+    });
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #ffffff; }
+    .pdf-shell { padding: 16px; }
+${css}
+  </style>
+</head>
+<body>
+  <div class="pdf-shell">${htmlFragment}</div>
+</body>
+</html>`;
+}
+
+async function tryRenderPdfFromTemplate(invoice) {
+    if (!puppeteer) return null;
+
+    const executablePath = resolveBrowserExecutablePath();
+    if (!executablePath) return null;
+
+    const browser = await puppeteer.launch({
+        executablePath,
+        headless: true,
+        args: ['--no-sandbox', '--disable-setuid-sandbox']
+    });
+
+    try {
+        const page = await browser.newPage();
+        const html = await renderInvoiceHtmlFromTemplate(invoice);
+        await page.setContent(html, { waitUntil: 'networkidle0' });
+        const buffer = await page.pdf({
+            format: 'A4',
+            printBackground: true,
+            margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' }
+        });
+        return buffer;
+    } finally {
+        await browser.close();
+    }
+}
+
+function renderInvoicePdfLikeBuilder(doc, invoice) {
+    const left = doc.page.margins.left;
+    const right = doc.page.width - doc.page.margins.right;
+    const usableWidth = right - left;
+    const currency = 'KES';
+    const customer = invoice.customerDetails || {};
+    const car = invoice.carDetails || {};
+    const bank = invoice.bankDetails || {};
+    const mpesa = invoice.mpesaDetails || {};
+    const items = invoice.invoiceItems || [];
+    const subtotal = Number(invoice.subtotal || 0);
+    const total = Number(invoice.totalCost || 0);
+    const duty = items
+        .filter((it) => String(it.description || '').toLowerCase().includes('duty payable'))
+        .reduce((sum, it) => sum + Number(it.cost || 0), 0);
+    const discount = Math.abs(items
+        .filter((it) => String(it.description || '').toLowerCase().includes('discount'))
+        .reduce((sum, it) => sum + Number(it.cost || 0), 0));
+    const customerName = (customer.legalName || `${customer.firstName || ''} ${customer.lastName || ''}`).trim() || '__________________';
+    const customerId = customer.customerId || '__________________';
+
+    const ensureSpace = (heightNeeded = 24) => {
+        const bottom = doc.page.height - doc.page.margins.bottom;
+        if (doc.y + heightNeeded > bottom) doc.addPage();
+    };
+
+    doc.fillColor('#111').fontSize(16).text('TRONEX CAR IMPORTERS LTD', left, doc.y, { width: usableWidth * 0.58 });
+    doc.fontSize(10).fillColor('#555').text('Proforma Invoice', left, doc.y + 1, { width: usableWidth * 0.58 });
+    doc.fontSize(9).fillColor('#555').text(`Mobile: ${customer.mobileNumber || '__________________'}`, left + usableWidth * 0.62, 40, { width: usableWidth * 0.38, align: 'right' });
+    doc.text(`Email: ${customer.email || '__________________'}`, { width: usableWidth * 0.38, align: 'right' });
+    doc.moveDown(1.4);
+    doc.fillColor('#111').fontSize(13).text('PROFORMA INVOICE', { align: 'center' });
+    doc.moveDown(0.5);
+
+    ensureSpace(72);
+    const metaTop = doc.y;
+    doc.roundedRect(left, metaTop, usableWidth, 64, 4).strokeColor('#dddddd').lineWidth(1).stroke();
+    doc.fontSize(9).fillColor('#111');
+    doc.text(`Customer ID: ${customerId}`, left + 10, metaTop + 8);
+    doc.text(`Stock ID: ${car.internalStockNumber || 'N/A'}`, left + usableWidth / 2, metaTop + 8);
+    doc.text(`Invoice No: ${invoice.invoiceNumber || '__________________'}`, left + 10, metaTop + 26);
+    doc.text(`Date Issued: ${fmtDate(invoice.dateIssued)}`, left + usableWidth / 3, metaTop + 26);
+    doc.text(`Expiry Date: ${fmtDate(invoice.expiryDate)}`, left + (usableWidth * 2) / 3, metaTop + 26);
+    doc.text(`Customer: ${customerName}`, left + 10, metaTop + 44);
+    doc.text(`Mobile: ${customer.mobileNumber || '__________________'}`, left + usableWidth / 2, metaTop + 44);
+    doc.y = metaTop + 74;
+
+    const widths = [usableWidth * 0.46, usableWidth * 0.18, usableWidth * 0.18, usableWidth * 0.18];
+    const colX = [left, left + widths[0], left + widths[0] + widths[1], left + widths[0] + widths[1] + widths[2]];
+    const drawRow = (cells, isHeader = false, bold = false) => {
+        ensureSpace(20);
+        const y = doc.y;
+        doc.rect(left, y, usableWidth, 18).fillAndStroke(isHeader ? '#f5f6fb' : '#ffffff', '#e5e7eb');
+        doc.fillColor('#111').font(bold ? 'Helvetica-Bold' : 'Helvetica').fontSize(9);
+        doc.text(cells[0] || '', colX[0] + 6, y + 5, { width: widths[0] - 12 });
+        doc.text(cells[1] || '', colX[1] + 4, y + 5, { width: widths[1] - 8, align: 'right' });
+        doc.text(cells[2] || '', colX[2] + 4, y + 5, { width: widths[2] - 8, align: 'right' });
+        doc.text(cells[3] || '', colX[3] + 4, y + 5, { width: widths[3] - 8, align: 'right' });
+        doc.y = y + 18;
+    };
+
+    drawRow(['Description', 'Cost', 'Itemized Total', 'Total Cost'], true, true);
+    items.forEach((it) => {
+        drawRow([
+            String(it.description || '—'),
+            `${currency} ${moneyKES(it.cost).replace('KES ', '')}`,
+            '',
+            ''
+        ]);
+    });
+    drawRow(['Itemized Total', '', `${currency} ${moneyKES(subtotal).replace('KES ', '')}`, ''], false, true);
+    drawRow(['Duty Payable', `${currency} ${moneyKES(duty).replace('KES ', '')}`, '', '']);
+    drawRow(['Discount', `${currency} ${moneyKES(discount).replace('KES ', '')}`, '', '']);
+    drawRow(['TOTAL COSTS (All Costs Inclusive)', '', '', `${currency} ${moneyKES(total).replace('KES ', '')}`], false, true);
+    doc.moveDown(0.6);
+
+    ensureSpace(120);
+    const boxTop = doc.y;
+    const boxGap = 10;
+    const boxWidth = (usableWidth - boxGap) / 2;
+    const boxHeight = 105;
+    doc.roundedRect(left, boxTop, boxWidth, boxHeight, 4).strokeColor('#d7dce4').stroke();
+    doc.roundedRect(left + boxWidth + boxGap, boxTop, boxWidth, boxHeight, 4).strokeColor('#d7dce4').stroke();
+    doc.fillColor('#111').font('Helvetica-Bold').fontSize(10).text('BANK DETAILS', left + 8, boxTop + 8);
+    doc.font('Helvetica').fontSize(9).text(`Bank: ${bank.bankName || '—'}`, left + 8, boxTop + 24);
+    doc.text(`Account Name: ${bank.accountName || '—'}`, left + 8, boxTop + 38);
+    doc.text(`Branch Code: ${bank.branchCode || '—'}`, left + 8, boxTop + 52);
+    doc.text(`Account Number: ${bank.accountNumber || '—'}`, left + 8, boxTop + 66);
+    doc.text(`Swift Code: ${bank.swiftCode || '—'}`, left + 8, boxTop + 80);
+    const rX = left + boxWidth + boxGap + 8;
+    doc.font('Helvetica-Bold').fontSize(10).text('M-PESA DETAILS', rX, boxTop + 8);
+    doc.font('Helvetica').fontSize(9).text(`Paybill No: ${mpesa.paybillNumber || '—'}`, rX, boxTop + 24);
+    doc.text(`Account Name: ${mpesa.accountName || '—'}`, rX, boxTop + 38);
+    doc.text('Customer Signature: __________________', rX, boxTop + 80);
+    doc.y = boxTop + boxHeight + 14;
+
+    ensureSpace(140);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#111').text('VEHICLE DETAILS');
+    doc.moveDown(0.3);
+    doc.font('Helvetica').fontSize(9);
+    doc.text(`Stock ID: ${car.internalStockNumber || 'N/A'}`);
+    doc.text(`Year: ${car.year || 'N/A'}`);
+    doc.text(`Make: ${car.make || 'N/A'}    Model: ${car.model || 'N/A'}`);
+    doc.text(`Body Type: ${car.bodyType || 'N/A'}    Transmission: ${car.transmission || 'N/A'}`);
+    doc.text(`Fuel: ${car.fuel || 'N/A'}    Engine Capacity: ${car.engineCapacity || 'N/A'}`);
+    doc.text(`Mileage: ${car.mileage != null ? Number(car.mileage).toLocaleString() : 'N/A'}    Registration: ${car.registration || 'N/A'}`);
+}
+
+async function invoicePdfToBuffer(invoice) {
+    try {
+        const browserBuffer = await tryRenderPdfFromTemplate(invoice);
+        if (browserBuffer) return browserBuffer;
+    } catch (err) {
+        console.warn('⚠️ [INVOICE PDF] HTML renderer failed, falling back to PDFKit:', err.message);
+    }
+
+    return new Promise((resolve, reject) => {
+        try {
+            const chunks = [];
+            const doc = new PDFDocument({ size: 'A4', margin: 40 });
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', (err) => reject(err));
+            renderInvoicePdfLikeBuilder(doc, invoice);
+            doc.end();
+        } catch (err) {
+            reject(err);
+        }
+    });
+}
+
 // ============================================
 // CREATE INVOICE - Admin creates invoice for a car
 // ============================================
@@ -169,7 +459,7 @@ router.post('/api/admin/invoices', authenticateToken, async (req, res) => {
             mpesaDetails: mpesaDetails || {},
             expiryDate: new Date(expiryDate),
             claimClause,
-            createdBy: req.user.id,
+            createdBy: req.user?.id || null,
             status: 'Draft'
         });
 
@@ -191,6 +481,145 @@ router.post('/api/admin/invoices', authenticateToken, async (req, res) => {
 });
 
 // ============================================
+// GENERATE INVOICE FROM MANAGE-CARS INPUTS
+// - Creates an Invoice record (admin-visible)
+// - Sends Invoice PDF to Tronex + Faith emails
+// ============================================
+router.post('/api/admin/cars/:carId/generate-invoice', async (req, res) => {
+    try {
+        const { carId } = req.params;
+        const { invoiceCosts, expiryDays } = req.body || {};
+
+        // Choose an invoice creator:
+        // - If a JWT was provided elsewhere (req.user), use it.
+        // - Otherwise, allow null (createdBy is no longer required).
+        const creatorId = req.user?.id || null;
+
+        const car = await resolveCarByAnyId(carId);
+        if (!car) {
+            return res.status(404).json({ success: false, message: 'Car not found' });
+        }
+
+        const costsForInvoice = invoiceCosts && typeof invoiceCosts === 'object' ? invoiceCosts : (car.invoiceCosts || {});
+        const perCar = buildPerCarInvoice({ invoiceCosts: costsForInvoice });
+
+        const expiry = (() => {
+            const days = Number(expiryDays || process.env.INVOICE_EXPIRY_DAYS || 30);
+            return new Date(Date.now() + Math.max(0, days) * 24 * 60 * 60 * 1000);
+        })();
+
+        const invoiceItems = (perCar.items || [])
+            .map(it => ({ description: it.label, cost: Number(it.value || 0) }))
+            .filter(it => Number.isFinite(it.cost));
+
+        // Ensure duty payable (and discount) are included in invoice totals.
+        // The invoice schema calculates `subtotal` as the sum of `invoiceItems`,
+        // so duty must be an item for totals to reflect it.
+        if (Number.isFinite(perCar.dutyPayable) && Number(perCar.dutyPayable) > 0) {
+            invoiceItems.push({
+                description: 'Duty Payable',
+                cost: Number(perCar.dutyPayable)
+            });
+        }
+
+        if (Number.isFinite(perCar.discount) && Number(perCar.discount) > 0) {
+            // Discount reduces total, so represent it as a negative line.
+            invoiceItems.push({
+                description: 'Discount',
+                cost: -Number(perCar.discount)
+            });
+        }
+
+        const invoice = new Invoice({
+            carId: car._id,
+            carDetails: {
+                make: car.make,
+                model: car.model,
+                year: car.year,
+                internalStockNumber: car.internalStockNumber,
+                externalStockNumber: car.externalStockNumber,
+                price: car.price,
+                type: car.type,
+                bodyType: car.bodyType,
+                color: car.color,
+                interiorColor: car.interiorColor,
+                transmission: car.transmission,
+                fuel: car.fuel,
+                drive: car.drive,
+                engineCapacity: car.engineCapacity,
+                mileage: car.mileage,
+                doors: car.doors,
+                seats: car.seats,
+                trunk: car.trunk,
+                registration: car.registration,
+                description: car.description,
+                _id: car._id
+            },
+            invoiceItems,
+            bankDetails: {
+                bankName: perCar.bank.bankName,
+                accountName: perCar.bank.accountName,
+                branchCode: perCar.bank.branchCode,
+                branch: perCar.bank.branch,
+                accountNumber: perCar.bank.accountNumber,
+                swiftCode: perCar.bank.swiftCode
+            },
+            mpesaDetails: {
+                paybillNumber: perCar.bank.paybill,
+                accountName: 'TRONEX'
+            },
+            expiryDate: expiry,
+            claimClause: undefined,
+            createdBy: creatorId,
+            status: 'Issued'
+        });
+
+        await invoice.save();
+
+        let emailSent = false;
+        let emailError = null;
+
+        // Email using Resend if configured.
+        const recipients = ['tronexcarimportersltd@gmail.com', 'faithmaina393@gmail.com'];
+        const resend = getResendClient();
+
+        if (resend && process.env.EMAIL_FROM) {
+            const pdfBuffer = await invoicePdfToBuffer(invoice);
+            const attachmentName = `${invoice.invoiceNumber || invoice._id}.pdf`;
+
+            try {
+                const sendResult = await sendInvoiceEmailWithAttachment({
+                    to: recipients,
+                    subject: `TRONEX Invoice ${invoice.invoiceNumber} - ${car.make} ${car.model}`,
+                    text: `Hello,\n\nPlease find attached invoice ${invoice.invoiceNumber} for ${car.make} ${car.model}.\n\nRegards,\nTRONEX`,
+                    filename: attachmentName,
+                    pdfBuffer
+                });
+                console.log('✅ [INVOICE EMAIL] Sent with Resend id:', sendResult?.id || 'n/a');
+                emailSent = true;
+            } catch (e) {
+                emailError = e && e.message ? e.message : String(e);
+                console.error('❌ [INVOICE EMAIL ERROR]:', emailError);
+            }
+        } else {
+            emailError = 'Resend not configured (missing RESEND_API_KEY or EMAIL_FROM); invoice created but email not sent.';
+        }
+
+        return res.json({
+            success: true,
+            message: 'Invoice created successfully',
+            data: {
+                invoice,
+                email: { sent: emailSent, error: emailError }
+            }
+        });
+    } catch (error) {
+        console.error('❌ [GENERATE INVOICE ERROR]:', error);
+        res.status(500).json({ success: false, message: 'Error generating invoice: ' + error.message });
+    }
+});
+
+// ============================================
 // DOWNLOAD INVOICE PDF - Admin/Customer downloads invoice as PDF
 // ============================================
 router.get('/api/invoices/:invoiceId/pdf', authenticateToken, async (req, res) => {
@@ -205,105 +634,12 @@ router.get('/api/invoices/:invoiceId/pdf', authenticateToken, async (req, res) =
             return res.status(404).json({ success: false, message: 'Invoice not found' });
         }
 
-        const doc = new PDFDocument({ size: 'A4', margin: 50 });
         const filename = `${invoice.invoiceNumber || invoice._id}.pdf`;
+        const pdfBuffer = await invoicePdfToBuffer(invoice);
 
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-
-        doc.pipe(res);
-
-        // Header
-        doc.fontSize(20).text('TRONEX LTD', { align: 'left' });
-        doc.moveDown(0.2);
-        doc.fontSize(10).fillColor('#444').text('Car Importation Invoice', { align: 'left' });
-        doc.fillColor('#000');
-        doc.moveDown(0.8);
-
-        // Invoice metadata
-        doc.fontSize(12).text(`Invoice Number: ${invoice.invoiceNumber || '—'}`);
-        doc.text(`Date Issued: ${new Date(invoice.dateIssued || Date.now()).toLocaleDateString()}`);
-        doc.text(`Expiry Date: ${new Date(invoice.expiryDate).toLocaleDateString()}`);
-        doc.text(`Status: ${invoice.status || '—'}`);
-        doc.moveDown(0.8);
-
-        // Customer snapshot (auto-fill)
-        const cust = invoice.customerDetails || {};
-        const custName = `${cust.firstName || ''} ${cust.lastName || ''}`.trim() || '—';
-        doc.fontSize(13).text('Customer', { underline: true });
-        doc.moveDown(0.4);
-        doc.fontSize(10)
-            .text(`Name: ${custName}`)
-            .text(`Email: ${cust.email || '—'}`)
-            .text(`Mobile: ${cust.mobileNumber || '—'}`)
-            .text(`Address: ${(cust.address || '').trim() || '—'}`)
-            .text(`City: ${(cust.city || '').trim() || '—'}`)
-            .text(`Country: ${(cust.country || '').trim() || '—'}`);
-        doc.moveDown(0.8);
-
-        // Car snapshot
-        const car = invoice.carDetails || {};
-        doc.fontSize(13).text('Vehicle', { underline: true });
-        doc.moveDown(0.4);
-        doc.fontSize(11)
-            .text(`StockID: ${car.internalStockNumber || '—'}`)
-            .text(`Vehicle: ${car.make || ''} ${car.model || ''} (${car.year || '—'})`)
-            .text(`External Stock: ${car.externalStockNumber || '—'}`)
-            .text(`Price: ${formatCurrency(car.price)}`);
-        doc.moveDown(0.8);
-
-        // Items table
-        doc.fontSize(13).text('Invoice Items', { underline: true });
-        doc.moveDown(0.4);
-
-        const startX = doc.x;
-        const colDesc = startX;
-        const colCost = startX + 360;
-        const rowH = 18;
-
-        doc.fontSize(10).fillColor('#444');
-        doc.text('Description', colDesc, doc.y, { width: 340 });
-        doc.text('Cost', colCost, doc.y, { width: 140, align: 'right' });
-        doc.fillColor('#000');
-        doc.moveDown(0.6);
-
-        (invoice.invoiceItems || []).forEach(item => {
-            const y = doc.y;
-            doc.fontSize(10).text(item.description || '—', colDesc, y, { width: 340 });
-            doc.text(formatCurrency(item.cost), colCost, y, { width: 140, align: 'right' });
-            doc.moveDown(rowH / 10);
-        });
-
-        doc.moveDown(0.6);
-        doc.fontSize(11).text(`Subtotal: ${formatCurrency(invoice.subtotal)}`, { align: 'right' });
-        doc.fontSize(12).text(`Total: ${formatCurrency(invoice.totalCost)}`, { align: 'right' });
-        doc.moveDown(0.8);
-
-        // Payment details
-        doc.fontSize(13).text('Payment Details', { underline: true });
-        doc.moveDown(0.4);
-        const bank = invoice.bankDetails || {};
-        const mpesa = invoice.mpesaDetails || {};
-        doc.fontSize(10)
-            .text(`Bank: ${bank.bankName || '—'}`)
-            .text(`Account Name: ${bank.accountName || '—'}`)
-            .text(`Account Number: ${bank.accountNumber || '—'}`)
-            .text(`Branch: ${bank.branch || '—'}`)
-            .text(`Swift Code: ${bank.swiftCode || '—'}`);
-        doc.moveDown(0.4);
-        doc.text(`M-Pesa Paybill: ${mpesa.paybillNumber || '—'}`);
-        doc.text(`M-Pesa Account Name: ${mpesa.accountName || '—'}`);
-        doc.moveDown(0.8);
-
-        // Terms
-        if (invoice.claimClause) {
-            doc.fontSize(13).text('Terms', { underline: true });
-            doc.moveDown(0.4);
-            doc.fontSize(9).fillColor('#333').text(invoice.claimClause, { align: 'left' });
-            doc.fillColor('#000');
-        }
-
-        doc.end();
+        return res.send(pdfBuffer);
     } catch (error) {
         console.error('❌ [PDF DOWNLOAD ERROR]:', error);
         res.status(500).json({ success: false, message: 'Error generating PDF: ' + error.message });
@@ -344,8 +680,8 @@ router.get('/api/cars/:carId/invoice/pdf', authenticateToken, async (req, res) =
         // Meta (auto-filled)
         const toName = (customer.profile?.legalName || '').trim() || `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
         doc.fontSize(10)
-            .text(`Customer ID: ${customer._id}`)
-            .text(`To: ${toName || '—'}`)
+            .text(`Customer ID: ${customer.customerId || customer._id}`)
+            .text(`Customer Name: ${toName || '—'}`)
             .text(`Mobile No: ${customer.mobileNumber || '—'}`)
             .text(`Email: ${customer.email || '—'}`)
             .text(`Country: ${customer.country || '—'}`)
@@ -409,6 +745,149 @@ router.get('/api/cars/:carId/invoice/pdf', authenticateToken, async (req, res) =
     } catch (error) {
         console.error('❌ [PER-CAR PDF ERROR]:', error);
         res.status(500).json({ success: false, message: 'Error generating invoice PDF: ' + error.message });
+    }
+});
+
+function proformaPdfToBuffer(car, customer) {
+    const inv = buildPerCarInvoice(car);
+    const chunks = [];
+
+    return new Promise((resolve, reject) => {
+        try {
+            const doc = new PDFDocument({ size: 'A4', margin: 40 });
+            doc.on('data', (chunk) => chunks.push(chunk));
+            doc.on('end', () => resolve(Buffer.concat(chunks)));
+            doc.on('error', (err) => reject(err));
+
+            // Letterhead
+            doc.fontSize(18).fillColor('#8b0f1a').text('TRONEX CAR IMPORTERS LTD', { align: 'left' });
+            doc.fillColor('#000').fontSize(10).text('Proforma Invoice', { align: 'left' });
+            doc.moveDown(0.8);
+
+            // Meta
+            const toName = (customer.profile?.legalName || '').trim()
+                || `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+
+            doc.fontSize(10)
+                .text(`Customer ID: ${customer.customerId || customer._id}`)
+                .text(`Customer Name: ${toName || '—'}`)
+                .text(`Mobile No: ${customer.mobileNumber || '—'}`)
+                .text(`Email: ${customer.email || '—'}`)
+                .text(`Country: ${customer.country || '—'}`)
+                .text(`National ID/Passport No: ${customer.profile?.idNumber || '—'}`)
+                .text(`Postal Address: ${customer.profile?.postalAddress || '—'}`)
+                .text(`Delivery Details: ${customer.profile?.deliveryDetails || '—'}`);
+
+            doc.moveDown(0.6);
+
+            // Vehicle
+            doc.fontSize(12).text('Vehicle', { underline: true });
+            doc.moveDown(0.3);
+            doc.fontSize(10)
+                .text(`Stock ID: ${car.internalStockNumber || '—'}`)
+                .text(`Make/Model: ${car.make || ''} ${car.model || ''} (${car.year || '—'})`)
+                .text(`Mileage: ${car.mileage?.toLocaleString?.() || car.mileage || '—'}`)
+                .text(`Transmission: ${car.transmission || '—'}`)
+                .text(`Fuel: ${car.fuel || '—'}`);
+            doc.moveDown(0.7);
+
+            // Table
+            doc.fontSize(12).text('Invoice Items', { underline: true });
+            doc.moveDown(0.3);
+            const startX = doc.x;
+            const colDesc = startX;
+            const colCost = startX + 360;
+
+            doc.fontSize(9).fillColor('#444');
+            doc.text('Description', colDesc, doc.y, { width: 340 });
+            doc.text('Cost', colCost, doc.y, { width: 140, align: 'right' });
+            doc.fillColor('#000');
+            doc.moveDown(0.6);
+
+            inv.items.forEach(it => {
+                const y = doc.y;
+                doc.fontSize(9).text(it.label, colDesc, y, { width: 340 });
+                doc.text(moneyKES(it.value).replace('KES ', ''), colCost, y, { width: 140, align: 'right' });
+                doc.moveDown(0.5);
+            });
+
+            doc.moveDown(0.5);
+            doc.fontSize(10).text(`Itemized Need Analysis Total: ${moneyKES(inv.itemizedNeedTotal)}`, { align: 'right' });
+            doc.text(`Duty Payable: ${moneyKES(inv.dutyPayable)}`, { align: 'right' });
+            doc.text(`Discount: ${moneyKES(inv.discount)}`, { align: 'right' });
+            doc.fontSize(11).text(`TOTAL COSTS: ${moneyKES(inv.totalCosts)}`, { align: 'right' });
+            doc.moveDown(0.8);
+
+            // Bank details (constant)
+            doc.fontSize(12).text('Bank Details', { underline: true });
+            doc.moveDown(0.3);
+            doc.fontSize(9)
+                .text(`Bank: ${inv.bank.bankName}`)
+                .text(`Account Name: ${inv.bank.accountName}`)
+                .text(`Branch Code: ${inv.bank.branchCode}`)
+                .text(`Branch: ${inv.bank.branch}`)
+                .text(`Account Number: ${inv.bank.accountNumber}`)
+                .text(`Swift Code: ${inv.bank.swiftCode}`)
+                .moveDown(0.3)
+                .text(`M-Pesa Paybill: ${inv.bank.paybill}`);
+
+            doc.end();
+        } catch (e) {
+            reject(e);
+        }
+    });
+}
+
+// Customer endpoint: email invoice PDF to customer email + Tronex addresses
+router.post('/api/cars/:carId/invoice/email', authenticateToken, async (req, res) => {
+    try {
+        const car = await resolveCarByAnyId(req.params.carId);
+        if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
+
+        const customer = await User.findById(req.user.id);
+        if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
+
+        const missing = [];
+        if (!process.env.RESEND_API_KEY) missing.push('RESEND_API_KEY');
+        if (!process.env.EMAIL_FROM) missing.push('EMAIL_FROM');
+
+        if (missing.length) {
+            return res.status(500).json({
+                success: false,
+                message: 'Resend not configured. Missing: ' + missing.join(', ')
+            });
+        }
+
+        const pdfBuffer = await proformaPdfToBuffer(car, customer);
+        const stock = (car.internalStockNumber || car._id || '').toString().replace(/[^a-zA-Z0-9\-_]/g, '');
+        const filename = `TRONEX-PROFORMA-${stock || 'CAR'}.pdf`;
+
+        const recipients = [
+            customer.email,
+            'tronexcarimportersltd@gmail.com',
+            'faithmaina393@gmail.com'
+        ].filter(Boolean);
+
+        const sendResult = await sendInvoiceEmailWithAttachment({
+            to: recipients,
+            subject: `TRONEX Invoice - ${car.make || ''} ${car.model || ''}`.trim(),
+            text: `Hello,\n\nPlease find attached the invoice for your vehicle (${car.make || ''} ${car.model || ''}).\n\nRegards,\nTRONEX Car Importers`,
+            filename,
+            pdfBuffer
+        });
+
+        return res.json({
+            success: true,
+            message: 'Invoice emailed successfully',
+            data: {
+                recipients,
+                provider: 'resend',
+                emailId: sendResult?.id || null
+            }
+        });
+    } catch (error) {
+        console.error('❌ [EMAIL INVOICE ERROR]:', error);
+        return res.status(500).json({ success: false, message: 'Error emailing invoice: ' + error.message });
     }
 });
 
@@ -619,7 +1098,8 @@ router.put('/api/invoices/:invoiceId/link-customer', authenticateToken, async (r
         // Update invoice with customer details
         invoice.customerId = customer._id;
         invoice.customerDetails = {
-            customerId: customer._id.toString(),
+            // Public customer ID used in invoice templates
+            customerId: (customer.customerId || customer._id).toString(),
             firstName: customer.firstName,
             lastName: customer.lastName,
             email: customer.email,

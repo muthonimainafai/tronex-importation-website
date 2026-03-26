@@ -63,6 +63,15 @@ const userSchema = new mongoose.Schema({
         default: 'customer'
     },
 
+    // Public-facing customer identifier shown on invoices
+    customerId: {
+        type: String,
+        unique: true,
+        sparse: true,
+        default: null,
+        trim: true
+    },
+
     isActive: {
         type: Boolean,
         default: true

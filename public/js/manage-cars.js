@@ -78,12 +78,26 @@ function setupEventListeners() {
         const el = document.getElementById(`inv_${f}`);
         if (el) el.addEventListener('input', recomputeInvoiceTotals);
     });
+
+    // Generate invoice (from invoiceCosts) + email + show in admin invoice page
+    const btnGenerateInvoice = document.getElementById('btnGenerateInvoice');
+    if (btnGenerateInvoice) {
+        btnGenerateInvoice.addEventListener('click', generateInvoiceAndEmail);
+    }
 }
 
 function numOrNull(v) {
     if (v === undefined || v === null) return null;
-    const s = String(v).trim();
+    let s = String(v).trim();
     if (s === '') return null;
+
+    // Allow inputs like "1,000.50" or "KES 1,000" by normalizing.
+    // Keep digits, dot, minus sign only.
+    s = s.replace(/,/g, '');
+    s = s.replace(/[^0-9.\-]/g, '');
+
+    if (s === '' || s === '.' || s === '-' || s === '-.') return null;
+
     const n = Number(s);
     return Number.isFinite(n) ? n : null;
 }
@@ -91,6 +105,44 @@ function numOrNull(v) {
 function moneyKES(n) {
     const num = Number(n || 0);
     return `KES ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function toNumericValue(value) {
+    if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+    const cleaned = String(value ?? '').replace(/[^\d.-]/g, '');
+    const parsed = Number(cleaned);
+    return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function formatKsh(value) {
+    return `KSH ${toNumericValue(value).toLocaleString()}`;
+}
+
+function getInvoiceTotalFromCosts(invoiceCosts) {
+    if (!invoiceCosts || typeof invoiceCosts !== 'object') return null;
+
+    const itemizedKeys = [
+        'cif',
+        'portCfsCharges',
+        'shippingLineDo',
+        'radiation',
+        'mssLevy',
+        'clearingServiceCharge',
+        'kgPlate',
+        'ntsaSticker',
+        'handlingCosts'
+    ];
+
+    const hasAnyInvoiceValue = itemizedKeys.some((key) => toNumericValue(invoiceCosts[key]) > 0)
+        || toNumericValue(invoiceCosts.dutyPayable) > 0
+        || toNumericValue(invoiceCosts.discount) > 0;
+
+    if (!hasAnyInvoiceValue) return null;
+
+    const itemizedTotal = itemizedKeys.reduce((sum, key) => sum + toNumericValue(invoiceCosts[key]), 0);
+    const dutyPayable = toNumericValue(invoiceCosts.dutyPayable);
+    const discount = toNumericValue(invoiceCosts.discount);
+    return Math.max(0, itemizedTotal + dutyPayable - discount);
 }
 
 function recomputeInvoiceTotals() {
@@ -122,6 +174,59 @@ function recomputeInvoiceTotals() {
     if (elNeed) elNeed.value = moneyKES(itemizedSum);
     if (elDuty) elDuty.value = moneyKES(duty);
     if (elTotal) elTotal.value = moneyKES(total);
+}
+
+async function generateInvoiceAndEmail() {
+    const btnGenerateInvoice = document.getElementById('btnGenerateInvoice');
+    if (btnGenerateInvoice) btnGenerateInvoice.disabled = true;
+
+    try {
+        if (!currentEditId) {
+            showToast('❌ Please save/edit the vehicle first to generate an invoice.', 'error');
+            return;
+        }
+
+        // Build invoiceCosts payload from the current modal form values
+        const invoiceCosts = { currency: 'KES' };
+        INVOICE_FIELDS.forEach(f => {
+            invoiceCosts[f] = numOrNull(document.getElementById(`inv_${f}`)?.value);
+        });
+
+        const expiryDays = 30;
+        const payload = { invoiceCosts, expiryDays };
+
+        const res = await fetch(`/api/admin/cars/${encodeURIComponent(currentEditId)}/generate-invoice`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+        });
+
+        const result = await res.json().catch(() => ({}));
+        if (!res.ok || result.success === false) {
+            throw new Error(result.message || `Failed to generate invoice (${res.status})`);
+        }
+
+        const invoice = result.data?.invoice;
+        const email = result.data?.email || {};
+        if (email.sent) {
+            showToast('✅ Invoice generated and emailed successfully.', 'success');
+        } else {
+            showToast('⚠️ Invoice created, but email was not sent: ' + (email.error || 'SMTP not configured.'), 'error');
+        }
+
+        // Close modal and open invoice builder preloaded with the new invoice
+        closeModals();
+        if (invoice?._id) {
+            window.location.href = `/admin-invoices?invoiceId=${encodeURIComponent(invoice._id)}`;
+        }
+    } catch (err) {
+        console.error('❌ [GENERATE INVOICE ERROR]:', err);
+        showToast('❌ ' + (err.message || 'Error generating invoice'), 'error');
+    } finally {
+        if (btnGenerateInvoice) btnGenerateInvoice.disabled = false;
+    }
 }
 
 
@@ -628,7 +733,11 @@ function displayCars() {
         return;
     }
 
-    tbody.innerHTML = filteredCars.map(car => `
+    tbody.innerHTML = filteredCars.map(car => {
+        const invoiceTotal = getInvoiceTotalFromCosts(car.invoiceCosts);
+        const displayPrice = invoiceTotal !== null ? invoiceTotal : toNumericValue(car.price);
+
+        return `
         <tr>
             <td>
                 <strong>${car.internalStockNumber || 'N/A'}</strong>
@@ -643,7 +752,7 @@ function displayCars() {
             <td>${car.make}</td>
             <td>${car.model}</td>
             <td>${car.year}</td>
-            <td>$${car.price.toLocaleString()}</td>
+            <td>${formatKsh(displayPrice)}</td>
             <td>${car.fuel || 'N/A'}</td>
             <td>
                 <span class="status-badge status-${car.availability.toLowerCase()}">
@@ -664,7 +773,8 @@ function displayCars() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 
@@ -797,10 +907,10 @@ async function saveCar(e) {
         // Vehicle identification
         make: make,
         model: model,
-        year: parseInt(document.getElementById('year').value),
+        year: parseInt(document.getElementById('year').value, 10),
         
         // Pricing & Availability
-        price: parseFloat(document.getElementById('price').value),
+        price: numOrNull(document.getElementById('price').value),
         availability: document.getElementById('availability').value,
         
         // Physical specs
@@ -812,7 +922,7 @@ async function saveCar(e) {
         seats: parseInt(document.getElementById('seats').value) || 5,
         
         // Engine & transmission
-        mileage: parseInt(document.getElementById('mileage').value),
+        mileage: numOrNull(document.getElementById('mileage').value),
         transmission: document.getElementById('transmission').value,
         fuel: document.getElementById('fuel').value,
         engineCapacity: document.getElementById('engineCapacity').value || '',

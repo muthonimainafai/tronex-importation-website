@@ -898,3 +898,31 @@ body {
         font-size: 0.9rem;
     }
 }
+
+/* Theme alignment with landing page */
+body {
+    background: linear-gradient(to bottom, #eef3f8, #f8fbff);
+}
+
+.header-content h1 i,
+.section-title i,
+.car-count,
+.form-group label i {
+    color: #1f4b6e;
+}
+
+.btn-add-new,
+.btn-submit,
+.btn-view,
+.btn-edit,
+.btn-generate {
+    background: linear-gradient(135deg, #1f4b6e 0%, #2f6a8f 100%);
+}
+
+.btn-add-new:hover,
+.btn-submit:hover,
+.btn-view:hover,
+.btn-edit:hover,
+.btn-generate:hover {
+    background: linear-gradient(135deg, #163b59 0%, #265777 100%);
+}

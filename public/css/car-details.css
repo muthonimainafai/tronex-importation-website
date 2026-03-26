@@ -592,7 +592,7 @@ body {
 
 .btn-primary,
 .btn-secondary {
-    padding: 1rem 2rem;
+    padding: 2rem 2rem;
     border: none;
     border-radius: 10px;
     font-weight: 600;
@@ -918,4 +918,26 @@ body {
         height: 40px;
         font-size: 1rem;
     }
+}
+
+/* Theme alignment with landing page */
+body {
+    background: linear-gradient(to bottom, #eef3f8, #f8fbff);
+}
+
+.navbar-logo a,
+.navbar-links a:hover,
+.breadcrumb a,
+.spec-name,
+.detail-card h3 i {
+    color: #1f4b6e;
+}
+
+.hero-banner,
+.price-tag,
+.btn-buy-now,
+.btn-primary {
+    background:
+        radial-gradient(circle at 20% 15%, rgba(227, 155, 87, 0.22), transparent 45%),
+        linear-gradient(130deg, #14344f 0%, #1f4b6e 52%, #7d3b2a 100%);
 }

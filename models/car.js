@@ -2,7 +2,15 @@ const mongoose = require('mongoose');
 
 const carSchema = new mongoose.Schema({
     // MongoDB will auto-create _id as ObjectId
-    
+
+    // Public/legacy identifier (kept unique to satisfy existing DB index)
+    carId: {
+        type: String,
+        unique: true,
+        required: [true, 'Car ID is required'],
+        default: () => `CAR-${Date.now()}-${Math.floor(Math.random() * 1000000)}`
+    },
+
     // Stock Numbers (these are NOT the _id)
     internalStockNumber: {
         type: String,

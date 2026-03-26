@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate" />
+    <meta http-equiv="Pragma" content="no-cache" />
+    <meta http-equiv="Expires" content="0" />
     <title>Manage Cars - Tronex Admin</title>
     <link rel="stylesheet" href="/css/manage-cars.css">
     <link rel="stylesheet" href="/css/image-upload.css">
@@ -441,6 +444,9 @@
                     <button type="submit" class="btn-submit">
                         <i class="fas fa-save"></i> Save Vehicle
                     </button>
+                    <button type="button" class="btn-submit" id="btnGenerateInvoice" title="Create an invoice from the entered invoice costs and email it.">
+                        <i class="fas fa-receipt"></i> Generate Invoice
+                    </button>
                     <button type="reset" class="btn-reset">
                         <i class="fas fa-redo"></i> Clear Form
                     </button>
@@ -470,7 +476,7 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
-    <script src="/js/manage-cars.js"></script>
+    <script src="/js/manage-cars.js?v=20260325"></script>
    <!-- <script src="/js/image-upload.js"></script> -->
 </body>
 </html>
