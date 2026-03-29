@@ -109,14 +109,26 @@ const Car = require('./models/car');
 const User = require('./models/User');
 
 console.log('📊 Connecting to MongoDB...');
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/tronex-cars')
-    .then(() => {
+const mongoUriRaw = process.env.MONGODB_URI || 'mongodb://localhost:27017/tronex-cars';
+const mongoUri = mongoUriRaw.replace('mongodb://localhost', 'mongodb://127.0.0.1');
+let mongoConnectAttempt = 0;
+
+async function connectMongoWithRetry() {
+    mongoConnectAttempt += 1;
+    try {
+        await mongoose.connect(mongoUri, {
+            serverSelectionTimeoutMS: 5000
+        });
         console.log('✅ MongoDB connected successfully!');
-        initializeCounter();
-    })
-    .catch((err) => {
-        console.error('❌ MongoDB connection error:', err.message);
-    });
+        await initializeCounter();
+    } catch (err) {
+        console.error(`❌ MongoDB connection error (attempt ${mongoConnectAttempt}):`, err.message);
+        console.log('🔁 Retrying MongoDB connection in 5 seconds...');
+        setTimeout(connectMongoWithRetry, 5000);
+    }
+}
+
+connectMongoWithRetry();
 
 // ============================================
 // STOCK NUMBER COUNTER FUNCTIONS
@@ -246,6 +258,18 @@ function requireUserPage(req, res, next) {
   });
 }
 
+function requireCustomerPage(req, res, next) {
+  const token = getJwtFromRequest(req);
+  if (!token) return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, user) => {
+    if (err || !user || user.role !== 'customer') {
+      return res.redirect('/login?next=' + encodeURIComponent(req.originalUrl));
+    }
+    req.user = user;
+    next();
+  });
+}
+
 // ============================================
 // INVOICE HELPERS (per-car)
 // ============================================
@@ -365,7 +389,7 @@ app.get('/login', (req, res) => {
 });
 
 // My Profile (requires login)
-app.get(['/my-profile', '/my-profile/'], requireUserPage, (req, res) => {
+app.get(['/my-profile', '/my-profile/'], requireCustomerPage, (req, res) => {
   res.render('my-profile');
 });
 

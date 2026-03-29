@@ -302,12 +302,27 @@ router.put('/api/auth/update-profile', authenticateToken, async (req, res) => {
         if (email !== undefined) user.email = String(email).toLowerCase();
 
         if (profile && typeof profile === 'object') {
-            user.profile = Object.assign({}, user.profile || {}, {
-                companyName: profile.companyName ?? user.profile?.companyName ?? '',
-                legalName: profile.legalName ?? user.profile?.legalName ?? '',
-                idNumber: profile.idNumber ?? user.profile?.idNumber ?? '',
-                postalAddress: profile.postalAddress ?? user.profile?.postalAddress ?? '',
-                deliveryDetails: profile.deliveryDetails ?? user.profile?.deliveryDetails ?? ''
+            const prev = user.profile || {};
+            const rep = profile.representative && typeof profile.representative === 'object'
+                ? Object.assign({}, prev.representative || {}, {
+                    name: profile.representative.name !== undefined ? profile.representative.name : (prev.representative?.name ?? ''),
+                    idNo: profile.representative.idNo !== undefined ? profile.representative.idNo : (prev.representative?.idNo ?? ''),
+                    mobile: profile.representative.mobile !== undefined ? profile.representative.mobile : (prev.representative?.mobile ?? ''),
+                    cityTown: profile.representative.cityTown !== undefined ? profile.representative.cityTown : (prev.representative?.cityTown ?? '')
+                })
+                : prev.representative;
+
+            user.profile = Object.assign({}, prev, {
+                companyName: profile.companyName ?? prev.companyName ?? '',
+                legalName: profile.legalName ?? prev.legalName ?? '',
+                idNumber: profile.idNumber ?? prev.idNumber ?? '',
+                postalAddress: profile.postalAddress ?? prev.postalAddress ?? '',
+                deliveryDetails: profile.deliveryDetails ?? prev.deliveryDetails ?? '',
+                secondaryMobile: profile.secondaryMobile !== undefined ? profile.secondaryMobile : (prev.secondaryMobile ?? ''),
+                displayUsername: profile.displayUsername !== undefined ? profile.displayUsername : (prev.displayUsername ?? ''),
+                consigneeType: profile.consigneeType !== undefined ? profile.consigneeType : (prev.consigneeType ?? ''),
+                inquiryMessage: profile.inquiryMessage !== undefined ? profile.inquiryMessage : (prev.inquiryMessage ?? ''),
+                representative: rep || { name: '', idNo: '', mobile: '', cityTown: '' }
             });
         }
 
@@ -389,6 +404,48 @@ router.post('/api/profile/upload/pin', authenticateToken, upload.single('pin'), 
         const url = `/uploads/customers/${req.user.id}/${req.file.filename}`;
         await User.findByIdAndUpdate(req.user.id, { $set: { 'uploads.pinDocUrl': url, updatedAt: new Date() } });
         res.json({ success: true, data: { url } });
+    } catch (e) {
+        res.status(500).json({ success: false, message: 'Upload failed: ' + e.message });
+    }
+});
+
+const UPLOAD_SLOT_PATHS = {
+    passport: 'profile.passportUrl',
+    'payment-first': 'uploads.paymentSlips.first',
+    'payment-second': 'uploads.paymentSlips.second',
+    'payment-third': 'uploads.paymentSlips.third',
+    'consignee-id-front': 'uploads.consigneeDocs.nationalIdFront',
+    'consignee-id-back': 'uploads.consigneeDocs.nationalIdBack',
+    'consignee-coi': 'uploads.consigneeDocs.certificateOfIncorporation',
+    'consignee-business-reg': 'uploads.consigneeDocs.businessRegistration',
+    'consignee-passport': 'uploads.consigneeDocs.passport',
+    'consignee-alien': 'uploads.consigneeDocs.alienId',
+    'consignee-military-front': 'uploads.consigneeDocs.militaryFront',
+    'consignee-military-back': 'uploads.consigneeDocs.militaryBack',
+    'consignee-diplomat': 'uploads.consigneeDocs.diplomatId',
+    'pin-personal': 'uploads.pinDocs.personalPin',
+    'pin-company': 'uploads.pinDocs.companyPin',
+    'pin-business': 'uploads.pinDocs.businessNamePin',
+    'pin-non-resident': 'uploads.pinDocs.nonResidentPin',
+    'other-1': 'uploads.otherUploads.slot1',
+    'other-2': 'uploads.otherUploads.slot2',
+    logbook: 'uploads.logbookCopyUrl',
+    'inquiry-attach': 'profile.inquiryAttachmentUrl'
+};
+
+router.post('/api/profile/upload-slot', authenticateToken, upload.single('file'), async (req, res) => {
+    try {
+        const slot = (req.body && req.body.slot ? String(req.body.slot) : '').trim();
+        const mongoPath = UPLOAD_SLOT_PATHS[slot];
+        if (!mongoPath) {
+            return res.status(400).json({ success: false, message: 'Invalid upload slot' });
+        }
+        if (!req.file) {
+            return res.status(400).json({ success: false, message: 'No file provided' });
+        }
+        const url = `/uploads/customers/${req.user.id}/${req.file.filename}`;
+        await User.findByIdAndUpdate(req.user.id, { $set: { [mongoPath]: url, updatedAt: new Date() } });
+        res.json({ success: true, data: { url, slot } });
     } catch (e) {
         res.status(500).json({ success: false, message: 'Upload failed: ' + e.message });
     }

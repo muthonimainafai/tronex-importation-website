@@ -97,7 +97,18 @@ const userSchema = new mongoose.Schema({
         legalName: { type: String, default: '', trim: true }, // name as per National ID
         idNumber: { type: String, default: '', trim: true }, // National ID/Passport no
         postalAddress: { type: String, default: '', trim: true },
-        deliveryDetails: { type: String, default: '', trim: true }
+        deliveryDetails: { type: String, default: '', trim: true },
+        secondaryMobile: { type: String, default: '', trim: true },
+        displayUsername: { type: String, default: '', trim: true },
+        consigneeType: { type: String, default: '', trim: true },
+        representative: {
+            name: { type: String, default: '', trim: true },
+            idNo: { type: String, default: '', trim: true },
+            mobile: { type: String, default: '', trim: true },
+            cityTown: { type: String, default: '', trim: true }
+        },
+        inquiryMessage: { type: String, default: '', trim: true },
+        inquiryAttachmentUrl: { type: String, default: '' }
     },
 
     // ============================================
@@ -109,9 +120,36 @@ const userSchema = new mongoose.Schema({
                 url: { type: String, required: true },
                 uploadedAt: { type: Date, default: Date.now }
             }
-        ], // minimum 3 uploads (enforced in UI/validation where needed)
-        consigneeDocUrl: { type: String, default: '' }, // ID/Passport/COI/BR cert
-        pinDocUrl: { type: String, default: '' } // KRA PIN doc
+        ],
+        paymentSlips: {
+            first: { type: String, default: '' },
+            second: { type: String, default: '' },
+            third: { type: String, default: '' }
+        },
+        consigneeDocUrl: { type: String, default: '' },
+        consigneeDocs: {
+            nationalIdFront: { type: String, default: '' },
+            nationalIdBack: { type: String, default: '' },
+            certificateOfIncorporation: { type: String, default: '' },
+            businessRegistration: { type: String, default: '' },
+            passport: { type: String, default: '' },
+            alienId: { type: String, default: '' },
+            militaryFront: { type: String, default: '' },
+            militaryBack: { type: String, default: '' },
+            diplomatId: { type: String, default: '' }
+        },
+        pinDocUrl: { type: String, default: '' },
+        pinDocs: {
+            personalPin: { type: String, default: '' },
+            companyPin: { type: String, default: '' },
+            businessNamePin: { type: String, default: '' },
+            nonResidentPin: { type: String, default: '' }
+        },
+        otherUploads: {
+            slot1: { type: String, default: '' },
+            slot2: { type: String, default: '' }
+        },
+        logbookCopyUrl: { type: String, default: '' }
     },
 
     // ============================================

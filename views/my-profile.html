@@ -3,187 +3,336 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Profile - Tronex</title>
-  <link rel="stylesheet" href="/css/style.css">
-  <style>
-    .wrap{max-width:1200px;margin:28px auto;padding:0 16px}
-    .top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:flex-start;margin-bottom:14px}
-    .top h1{margin:0;font-size:26px}
-    .muted{color:rgba(0,0,0,.68)}
-    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:16px}
-    @media (max-width:1050px){.grid{grid-template-columns:1fr}}
-    .card{background:#fff;border:1px solid rgba(0,0,0,.10);border-radius:14px;padding:16px;box-shadow:0 10px 26px rgba(0,0,0,.06)}
-    .card h2{margin:0 0 10px}
-    .fg{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
-    .fg label{font-weight:800;color:#111}
-    .fg input,.fg textarea{padding:11px 12px;border:1px solid rgba(0,0,0,.12);border-radius:10px;outline:none}
-    .fg input:focus,.fg textarea:focus{border-color:#667eea;box-shadow:0 0 0 4px rgba(102,126,234,.18)}
-    .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:720px){.row{grid-template-columns:1fr}}
-    .btn{border:none;border-radius:10px;padding:11px 12px;font-weight:900;cursor:pointer}
-    .btn-primary{background:#667eea;color:#fff}
-    .btn-ghost{background:#fff;border:1px solid rgba(0,0,0,.14)}
-    .msg{display:none;margin:10px 0 0;padding:10px 12px;border-radius:10px}
-    .msg.error{display:block;background:#ffe8e8;color:#8a1f1f;border:1px solid #ffd0d0}
-    .msg.success{display:block;background:#e8fff1;color:#0f5a2b;border:1px solid #bff2d2}
-    table{width:100%;border-collapse:collapse;overflow:hidden;border-radius:12px}
-    th,td{padding:10px 8px;border-bottom:1px solid rgba(0,0,0,.08);font-size:13px;vertical-align:top}
-    th{text-align:left;color:#444;font-size:12px;text-transform:uppercase;letter-spacing:.04em;background:#f6f7fb}
-    .pill{display:inline-flex;gap:8px;align-items:center;padding:8px 10px;border-radius:999px;background:#f3f4ff;border:1px solid rgba(102,126,234,.25);font-weight:900;color:#2d2b7a}
-    .uploads-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-    @media (max-width:900px){.uploads-grid{grid-template-columns:1fr}}
-    .filebox{border:1px dashed rgba(0,0,0,.2);border-radius:12px;padding:12px;background:#fafafa}
-    .filebox small{display:block;margin-top:6px;color:rgba(0,0,0,.62)}
-    .list{margin:8px 0 0;padding-left:18px}
-    .list li{margin:6px 0}
-    .mt10{margin-top:10px}
-    .mt12{margin-top:12px}
-    .mt14{margin-top:14px}
-    .mt0{margin-top:0}
-    .mtn6{margin-top:-6px}
-    .mb14{margin-bottom:14px}
-    .hr{border:none;border-top:1px solid rgba(0,0,0,.08);margin:14px 0}
-    .no-mb{margin-bottom:0}
-    .overflow-auto{overflow:auto}
-  </style>
+  <title>My Profile - Tronex Car Importers</title>
+  <link rel="stylesheet" href="/css/my-profile.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body>
-  <div class="wrap">
-    <div class="top">
-      <div>
-        <h1>My Profile</h1>
-        <div class="pill">Complete your profile to auto-fill invoices</div>
-        <p class="muted mt10">Passport upload is compulsory.</p>
+<body class="mp-page">
+  <header class="mp-header">
+    <div>
+      <h1><i class="fas fa-user-circle" style="color:#8b0f1a;margin-right:10px"></i>My Profile</h1>
+      <span class="mp-pill"><i class="fas fa-file-invoice"></i> Complete your details for invoices &amp; clearance</span>
+      <p class="mp-muted" style="margin-top:10px">Keep your information accurate. Passport/ID upload helps us process your importation and registration documents.</p>
+    </div>
+    <a class="mp-back" href="/"><i class="fas fa-arrow-left"></i> Back to site</a>
+  </header>
+
+  <div class="mp-wrap">
+    <div id="msg" class="mp-msg"></div>
+
+    <form id="profileForm" class="mp-layout">
+      <div class="mp-col-main">
+        <!-- Profile details -->
+        <section class="mp-card" id="sec-profile">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">1</span> Profile details</h2>
+            <p class="mp-card-hint">Details as registered. Use <strong>Edit</strong> next to a field to update inline.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-photo-row">
+              <div class="mp-photo-box" id="photoBox">
+                <img id="passportPreview" src="" alt="" style="display:none">
+                <span class="mp-ph-placeholder" id="photoPlaceholder">Photo<br><small>from passport</small></span>
+              </div>
+              <div>
+                <div class="mp-field">
+                  <div class="mp-field-row">
+                    <label for="passportFile"><span class="mp-opt">*</span> Passport upload <span class="mp-opt">(recommended)</span></label>
+                    <button type="button" class="mp-edit" data-focus="passportFile">Change</button>
+                  </div>
+                  <input type="file" id="passportFile" accept="image/*,application/pdf" class="mp-input" style="padding:8px">
+                  <p class="mp-muted" style="font-size:0.8rem;margin:6px 0 0" id="passportStatus">No passport uploaded yet.</p>
+                </div>
+                <div class="mp-field">
+                  <div class="mp-field-row">
+                    <label for="companyName"><span class="mp-opt">*</span> Company name <span class="mp-opt">(if any)</span></label>
+                    <button type="button" class="mp-edit" data-focus="companyName">Edit</button>
+                  </div>
+                  <input class="mp-input" id="companyName" placeholder="Optional">
+                </div>
+              </div>
+            </div>
+
+            <div class="mp-row2">
+              <div class="mp-field">
+                <label for="legalName">Your name <span class="mp-opt">(as in national ID / passport)</span></label>
+                <input class="mp-input" id="legalName" placeholder="Full legal name">
+              </div>
+              <div class="mp-field">
+                <label for="idNumber">National ID / passport no.</label>
+                <input class="mp-input" id="idNumber" placeholder="ID or passport number">
+              </div>
+            </div>
+
+            <div class="mp-row2">
+              <div class="mp-field">
+                <div class="mp-field-row">
+                  <label for="country"><span class="mp-opt">*</span> Country</label>
+                  <button type="button" class="mp-edit" data-focus="country">Edit</button>
+                </div>
+                <input class="mp-input" id="country" placeholder="e.g. Kenya">
+              </div>
+              <div class="mp-field">
+                <label for="mobileNumber">Mobile / Tel. no.</label>
+                <input class="mp-input" id="mobileNumber" placeholder="Primary number">
+              </div>
+            </div>
+
+            <div class="mp-row2">
+              <div class="mp-field">
+                <div class="mp-field-row">
+                  <label for="secondaryMobile"><span class="mp-opt">*</span> Mob / Tel. no. 2</label>
+                  <button type="button" class="mp-edit" data-focus="secondaryMobile">Edit</button>
+                </div>
+                <input class="mp-input" id="secondaryMobile" placeholder="e.g. +254…">
+              </div>
+              <div class="mp-field">
+                <div class="mp-field-row">
+                  <label for="email"><span class="mp-opt">*</span> Email</label>
+                  <button type="button" class="mp-edit" data-focus="email">Edit</button>
+                </div>
+                <input class="mp-input" id="email" type="email" placeholder="e.g. johndoe@gmail.com">
+              </div>
+            </div>
+
+            <div class="mp-field">
+              <div class="mp-field-row">
+                <label for="postalAddress"><span class="mp-opt">*</span> Postal address <span class="mp-opt">(if you have)</span></label>
+                <button type="button" class="mp-edit" data-focus="postalAddress">Edit</button>
+              </div>
+              <input class="mp-input" id="postalAddress" placeholder="e.g. P.O Box 56785-80100 Mombasa">
+            </div>
+
+            <div class="mp-field">
+              <div class="mp-field-row">
+                <label for="deliveryDetails"><span class="mp-opt">*</span> Delivery details</label>
+                <button type="button" class="mp-edit" data-focus="deliveryDetails">Edit</button>
+              </div>
+              <textarea class="mp-textarea" id="deliveryDetails" placeholder="e.g. Kencom Nairobi, TRM Thika Road, etc."></textarea>
+            </div>
+
+            <div class="mp-row2">
+              <div class="mp-field">
+                <div class="mp-field-row">
+                  <label for="displayUsername"><span class="mp-opt">*</span> Username</label>
+                  <button type="button" class="mp-edit" data-focus="displayUsername">Change</button>
+                </div>
+                <input class="mp-input" id="displayUsername" placeholder="e.g. John">
+              </div>
+              <div class="mp-field">
+                <label for="firstName">First name <span class="mp-opt">(account)</span></label>
+                <input class="mp-input" id="firstName" placeholder="">
+              </div>
+            </div>
+            <div class="mp-field">
+              <label for="lastName">Last name <span class="mp-opt">(account)</span></label>
+              <input class="mp-input" id="lastName" placeholder="">
+            </div>
+
+            <div class="mp-field">
+              <label for="newPassword">Password <span class="mp-opt">(leave blank to keep current)</span></label>
+              <input class="mp-input" id="newPassword" type="password" minlength="6" autocomplete="new-password" placeholder="••••••••">
+            </div>
+          </div>
+        </section>
+
+        <!-- Payment bank slips -->
+        <section class="mp-card" id="sec-payments">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">2</span> Payment bank slips</h2>
+            <p class="mp-card-hint">Upload each slip after payment so we can track deposits and apply discounts in time.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-upload-line">
+              <span>(a) 1<sup>st</sup> payment bank slip</span>
+              <span class="mp-status" data-slot-status="payment-first">—</span>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" data-slot="payment-first" accept="image/*,application/pdf"></label>
+            </div>
+            <div class="mp-upload-line">
+              <span>(b) 2<sup>nd</sup> payment bank slip</span>
+              <span class="mp-status" data-slot-status="payment-second">—</span>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" data-slot="payment-second" accept="image/*,application/pdf"></label>
+            </div>
+            <div class="mp-upload-line">
+              <span>(c) 3<sup>rd</sup> payment bank slip</span>
+              <span class="mp-status" data-slot-status="payment-third">—</span>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" data-slot="payment-third" accept="image/*,application/pdf"></label>
+            </div>
+          </div>
+        </section>
+
+        <!-- Consignee ID -->
+        <section class="mp-card" id="sec-consignee">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">3</span> Consignee identification</h2>
+            <p class="mp-card-hint">The consignee is the name that will appear on the car logbook. Upload the documents that apply: National ID (front &amp; back), passport, Certificate of Incorporation, or Business Registration Certificate.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-info"><i class="fas fa-info-circle"></i> Upload only the documents relevant to you (individual, company, or business).</div>
+            <div class="mp-grid-uploads">
+              <div class="mp-upload-tile"><p>National ID — front</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-id-front" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-id-front" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>National ID — back</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-id-back" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-id-back" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Certificate of Incorporation</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-coi" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-coi" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Business registration certificate</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-business-reg" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-business-reg" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Passport</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-passport" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-passport" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Alien ID</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-alien" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-alien" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Military ID — front</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-military-front" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-military-front" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Military ID — back</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-military-back" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-military-back" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Diplomat ID</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="consignee-diplomat" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="consignee-diplomat" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+            </div>
+            <div class="mp-subblock">
+              <h3>Legacy single consignee document</h3>
+              <p class="mp-muted" style="font-size:0.85rem;margin-bottom:10px">Optional: one combined file if you already use this upload.</p>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" id="consigneeDoc" accept="image/*,application/pdf"></label>
+              <span id="consigneeStatus" class="mp-muted" style="font-size:0.85rem;margin-left:10px">Not uploaded.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- PIN documents -->
+        <section class="mp-card" id="sec-pin">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">4</span> PIN (KRA) documents</h2>
+            <p class="mp-card-hint">Upload the PIN copy that matches your selection above (personal, company, business, or non-resident).</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-grid-uploads">
+              <div class="mp-upload-tile"><p>Personal PIN copy</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="pin-personal" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="pin-personal" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Company PIN certificate</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="pin-company" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="pin-company" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Business name PIN copy</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="pin-business" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="pin-business" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Non-Kenyan resident PIN</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="pin-non-resident" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="pin-non-resident" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+            </div>
+            <div class="mp-subblock">
+              <h3>General PIN document</h3>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" id="pinDoc" accept="image/*,application/pdf"></label>
+              <span id="pinStatus" class="mp-muted" style="font-size:0.85rem;margin-left:10px">Not uploaded.</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Representative + Logbook + Inquiry -->
+        <section class="mp-card" id="sec-rep">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">5</span> Logbook collection representative</h2>
+            <p class="mp-card-hint">Person who will pick the car logbook from NTSA. For city/town use <strong>Nairobi</strong> or <strong>Mombasa</strong> for now.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-row2">
+              <div class="mp-field"><label for="repName">Name</label><input class="mp-input" id="repName" placeholder="Full name"></div>
+              <div class="mp-field"><label for="repIdNo">I.D no.</label><input class="mp-input" id="repIdNo" placeholder=""></div>
+            </div>
+            <div class="mp-row2">
+              <div class="mp-field"><label for="repMobile">Mobile no.</label><input class="mp-input" id="repMobile" placeholder=""></div>
+              <div class="mp-field">
+                <label for="repCity">City / town</label>
+                <select class="mp-input" id="repCity">
+                  <option value="">Select…</option>
+                  <option value="Nairobi">Nairobi</option>
+                  <option value="Mombasa">Mombasa</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mp-card" id="sec-logbook">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">6</span> Logbook confirmation</h2>
+            <p class="mp-card-hint">Upload a copy of your logbook for our records. If you have not received it within 30 days of receiving your vehicle, let us know in the inquiry box below.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-upload-line">
+              <span>Logbook copy upload</span>
+              <span class="mp-status" data-slot-status="logbook">—</span>
+              <label class="mp-btn-file mp-btn-sm">Upload<input type="file" data-slot="logbook" accept="image/*,application/pdf"></label>
+            </div>
+          </div>
+        </section>
+
+        <section class="mp-card" id="sec-other">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">7</span> Other uploads</h2>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-row2">
+              <div class="mp-upload-tile"><p>Other (i)</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="other-1" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="other-1" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+              <div class="mp-upload-tile"><p>Other (ii)</p><label class="mp-btn-file mp-btn-sm-outline">Upload<input type="file" data-slot="other-2" accept="image/*,application/pdf"></label><span class="mp-status" data-slot-status="other-2" style="display:block;margin-top:8px;font-size:0.75rem"></span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mp-card" id="sec-inquiry">
+          <div class="mp-card-head">
+            <h2><span class="mp-section-num">8</span> Inquiries</h2>
+            <p class="mp-card-hint">Write to us and attach any extra files if needed.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-field">
+              <label for="inquiryMessage">Your message</label>
+              <textarea class="mp-textarea" id="inquiryMessage" rows="5" placeholder="Questions or follow-up on logbook delivery, payments, etc."></textarea>
+            </div>
+            <div class="mp-upload-line">
+              <span>Attachment (optional)</span>
+              <span class="mp-status" data-slot-status="inquiry-attach">—</span>
+              <label class="mp-btn-file mp-btn-sm">Attach<input type="file" data-slot="inquiry-attach" accept="image/*,application/pdf"></label>
+            </div>
+            <div class="mp-actions">
+              <button type="submit" class="mp-btn-primary"><i class="fas fa-save"></i> Save profile &amp; updates</button>
+            </div>
+          </div>
+        </section>
       </div>
-      <a class="btn btn-ghost" href="/">← Back to site</a>
-    </div>
 
-    <div id="msg" class="msg"></div>
-
-    <div class="grid">
-      <section class="card">
-        <h2>Profile details</h2>
-        <form id="profileForm">
-          <div class="uploads-grid">
-            <div class="filebox">
-              <div class="fg no-mb">
-                <label for="passportFile">Passport upload *</label>
-                <input id="passportFile" type="file" accept="image/*,application/pdf" required>
-                <small id="passportStatus">No passport uploaded yet.</small>
-              </div>
-            </div>
-            <div class="filebox">
-              <div class="fg no-mb">
-                <label for="companyName">Company name (if any)</label>
-                <input id="companyName" placeholder="Optional">
-                <small class="muted">Leave blank if not applicable.</small>
-              </div>
+      <aside class="mp-col-side">
+        <section class="mp-card" id="sec-accounts">
+          <div class="mp-card-head">
+            <h2><i class="fas fa-table"></i> Account details</h2>
+            <p class="mp-card-hint">Per vehicle: price sold, dates, instalments, discount, and balance.</p>
+          </div>
+          <div class="mp-card-body">
+            <div class="mp-table-wrap">
+              <table class="mp-table" aria-label="Account details">
+                <thead>
+                  <tr>
+                    <th>Car stock no.</th>
+                    <th>Price sold (KSH)</th>
+                    <th>Receive date</th>
+                    <th>1<sup>st</sup> pay</th>
+                    <th>2<sup>nd</sup> pay</th>
+                    <th>3<sup>rd</sup> pay</th>
+                    <th>Discount</th>
+                    <th>Balance</th>
+                  </tr>
+                </thead>
+                <tbody id="accountRows">
+                  <tr><td colspan="8" class="mp-muted">Loading…</td></tr>
+                </tbody>
+              </table>
             </div>
           </div>
+        </section>
 
-          <div class="row mt12">
-            <div class="fg">
-              <label for="legalName">Your Name (As in National ID)</label>
-              <input id="legalName" placeholder="e.g., Faith Muthoni">
-            </div>
-            <div class="fg">
-              <label for="idNumber">National ID/Passport no</label>
-              <input id="idNumber" placeholder="ID/Passport number">
-            </div>
+        <section class="mp-card" id="sec-uploads-corner">
+          <div class="mp-card-head">
+            <h2><i class="fas fa-cloud-upload-alt"></i> Customer uploads &amp; inquiries</h2>
+            <p class="mp-card-hint">Scan and upload bank deposit slips for fast payment tracking. Additional slips beyond the three numbered payments can be added here.</p>
           </div>
-
-          <div class="row">
-            <div class="fg">
-              <label for="country">Country</label>
-              <input id="country" placeholder="Kenya">
+          <div class="mp-card-body">
+            <div class="mp-info">
+              Upload deposit slips as soon as payment is made so discounts and allocations stay accurate.
             </div>
-            <div class="fg">
-              <label for="mobileNumber">Mobile no</label>
-              <input id="mobileNumber" placeholder="0712345678">
+            <div class="mp-field">
+              <label for="bankSlipsExtra">Additional bank payment slips <span class="mp-opt">(multiple files)</span></label>
+              <input type="file" id="bankSlipsExtra" multiple accept="image/*,application/pdf" class="mp-input" style="padding:8px">
+              <p class="mp-muted" style="font-size:0.8rem;margin:6px 0 0" id="bankSlipsStatus">No additional slips yet.</p>
+              <ul id="bankSlipsList" style="margin:10px 0 0;padding-left:18px;font-size:0.85rem;color:var(--mp-muted)"></ul>
             </div>
           </div>
-
-          <div class="row">
-            <div class="fg">
-              <label for="email">Email</label>
-              <input id="email" type="email" placeholder="name@email.com">
-            </div>
-            <div class="fg">
-              <label for="postalAddress">Postal address</label>
-              <input id="postalAddress" placeholder="P.O. Box ...">
-            </div>
-          </div>
-
-          <div class="fg">
-            <label for="deliveryDetails">Delivery details</label>
-            <textarea id="deliveryDetails" rows="3" placeholder="Where and how you want delivery handled..."></textarea>
-          </div>
-
-          <div class="fg">
-            <label for="newPassword">Password (set/replace)</label>
-            <input id="newPassword" type="password" minlength="6" placeholder="Leave blank to keep current password">
-          </div>
-
-          <button class="btn btn-primary" type="submit">Save profile</button>
-        </form>
-      </section>
-
-      <aside class="card">
-        <h2>Account Details</h2>
-        <p class="muted mtn6">Your purchases and payment schedule.</p>
-        <div class="mt10 overflow-auto">
-          <table aria-label="Account details">
-            <thead>
-              <tr>
-                <th>Car Stock No</th>
-                <th>Price Sold (KSH)</th>
-                <th>Receive Date</th>
-                <th>1st Payment</th>
-                <th>2nd Payment</th>
-                <th>3rd Payment</th>
-                <th>Discount applied</th>
-                <th>Balance</th>
-              </tr>
-            </thead>
-            <tbody id="accountRows">
-              <tr><td colspan="8" class="muted">Loading…</td></tr>
-            </tbody>
-          </table>
-        </div>
-
-        <hr class="hr">
-
-        <h2>Customer Uploads</h2>
-        <div class="filebox">
-          <div class="fg no-mb">
-            <label for="bankSlips">Bank payment slips (min 3 uploads)</label>
-            <input id="bankSlips" type="file" multiple accept="image/*,application/pdf">
-            <small id="bankSlipsStatus">No slips uploaded yet.</small>
-          </div>
-          <ul id="bankSlipsList" class="list"></ul>
-        </div>
-
-        <div class="uploads-grid mt12">
-          <div class="filebox">
-            <div class="fg no-mb">
-              <label for="consigneeDoc">Consignee document</label>
-              <input id="consigneeDoc" type="file" accept="image/*,application/pdf">
-              <small id="consigneeStatus">Not uploaded.</small>
-            </div>
-          </div>
-          <div class="filebox">
-            <div class="fg no-mb">
-              <label for="pinDoc">Relevant PIN document</label>
-              <input id="pinDoc" type="file" accept="image/*,application/pdf">
-              <small id="pinStatus">Not uploaded.</small>
-            </div>
-          </div>
-        </div>
+        </section>
       </aside>
-    </div>
+    </form>
   </div>
 
-  <script src="/js/my-profile.js"></script>
+  <script src="/js/my-profile.js?v=20260329b"></script>
 </body>
 </html>
-

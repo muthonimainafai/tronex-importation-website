@@ -20,6 +20,10 @@
                 <li><a href="/stock-list" class="nav-link active">Stock List</a></li>
                 <li><a href="/about-us" class="nav-link">About</a></li>
                 <li><a href="/" class="nav-link">Contact</a></li>
+                <li id="authNavRegister"><a href="/register" class="nav-link">Register</a></li>
+                <li id="authNavLogin"><a href="/login" class="nav-link">Login</a></li>
+                <li id="authNavProfile" class="auth-hidden"><a href="/my-profile" class="nav-link">My Profile</a></li>
+                <li id="authNavLogout" class="auth-hidden"><a href="javascript:void(0)" class="nav-link">Logout</a></li>
             </ul>
         </div>
     </nav>
@@ -140,7 +144,7 @@
                     <div class="modal-left">
                         <div class="modal-image">
                             <div id="carImagePlaceholder" class="image-placeholder">
-                                <img id="modalCarImage" src="" alt="Car Image" style="width: 100%; height: 100%; object-fit: cover; display: none;">
+                                <img id="modalCarImage" src="" alt="Car Image">
                             </div>
                             <span id="carBadge" class="badge"></span>
                             <span id="carStatus" class="status-badge"></span>

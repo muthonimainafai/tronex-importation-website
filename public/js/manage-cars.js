@@ -7,6 +7,23 @@ let carToDelete = null;
 let uploadedImages = [];
 let mainImageUrl = '';
 
+function normalizeLeadingLetter(value, mode = 'upper') {
+    const text = String(value ?? '').replace(/^\s+/, '');
+    if (!text) return '';
+    const first = text.charAt(0);
+    const rest = text.slice(1);
+    return mode === 'lower' ? first.toLowerCase() + rest : first.toUpperCase() + rest;
+}
+
+function normalizeMakeModelInputs() {
+    const makeInput = document.getElementById('make');
+    const modelInput = document.getElementById('model');
+    if (!makeInput || !modelInput) return;
+
+    makeInput.value = normalizeLeadingLetter(makeInput.value, 'upper');
+    modelInput.value = normalizeLeadingLetter(modelInput.value, 'lower');
+}
+
 // Invoice cost fields (per-car)
 const INVOICE_FIELDS = [
     'cif',
@@ -50,6 +67,26 @@ function setupEventListeners() {
     // Search and filter
     document.getElementById('searchInput').addEventListener('keyup', filterCars);
     document.getElementById('statusFilter').addEventListener('change', filterCars);
+
+    // Auto-normalize make/model casing in add/edit form
+    const makeInput = document.getElementById('make');
+    const modelInput = document.getElementById('model');
+    if (makeInput) {
+        makeInput.addEventListener('input', () => {
+            makeInput.value = normalizeLeadingLetter(makeInput.value, 'upper');
+        });
+        makeInput.addEventListener('blur', () => {
+            makeInput.value = normalizeLeadingLetter(makeInput.value, 'upper');
+        });
+    }
+    if (modelInput) {
+        modelInput.addEventListener('input', () => {
+            modelInput.value = normalizeLeadingLetter(modelInput.value, 'lower');
+        });
+        modelInput.addEventListener('blur', () => {
+            modelInput.value = normalizeLeadingLetter(modelInput.value, 'lower');
+        });
+    }
 
     // Close modal when clicking outside
     document.getElementById('carModal').addEventListener('click', (e) => {
@@ -883,6 +920,7 @@ function openEditModal(carId) {
     loadImagesForEdit(car);
 
     document.getElementById('carModal').classList.add('show');
+    normalizeMakeModelInputs();
 }
 
 // Save car
@@ -890,9 +928,10 @@ async function saveCar(e) {
     e.preventDefault();
 
     console.log('🔍 [FORM SUBMISSION] Starting form validation...');
+    normalizeMakeModelInputs();
 
-    const make = document.getElementById('make').value;
-    const model = document.getElementById('model').value;
+    const make = document.getElementById('make').value.trim();
+    const model = document.getElementById('model').value.trim();
 
     // Validate required fields
     if (!make || !model) {

@@ -75,6 +75,10 @@ body {
     gap: 2rem;
 }
 
+.auth-hidden {
+    display: none;
+}
+
 .nav-link {
     text-decoration: none;
     color: var(--dark-color);
@@ -647,6 +651,35 @@ body {
 .cars-container {
     max-width: 1200px;
     margin: 0 auto;
+}
+
+.search-feedback {
+    display: none;
+    max-width: 860px;
+    margin: -1.2rem auto 1.6rem;
+    padding: 0.9rem 1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid transparent;
+}
+
+.search-feedback.success {
+    color: #065f46;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+
+.search-feedback.warning {
+    color: #7c2d12;
+    background: #fff7ed;
+    border-color: #fed7aa;
+}
+
+.search-feedback.info {
+    color: #1e3a8a;
+    background: #eff6ff;
+    border-color: #bfdbfe;
 }
 
 .cars-grid {

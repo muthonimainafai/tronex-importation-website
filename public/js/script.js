@@ -1,34 +1,22 @@
-// ==================== Cart Functionality ====================
-let cart = [];
-
-const cartIcon = document.getElementById('cartIcon');
-const cartSidebar = document.getElementById('cartSidebar');
-const cartOverlay = document.getElementById('cartOverlay');
-const closeCartBtn = document.getElementById('closeCart');
-const cartItemsContainer = document.getElementById('cartItems');
-const cartCount = document.getElementById('cartCount');
-const subtotalEl = document.getElementById('subtotal');
-const taxAmountEl = document.getElementById('taxAmount');
-const totalAmountEl = document.getElementById('totalAmount');
-const checkoutBtn = document.getElementById('checkoutBtn');
-const continueShopping = document.getElementById('continueShopping');
-
 // ==================== Auth Nav (Public Site) ====================
 function updateAuthNav() {
     const token = localStorage.getItem('tronex_token');
     const elRegister = document.getElementById('authNavRegister');
     const elLogin = document.getElementById('authNavLogin');
+    const elProfile = document.getElementById('authNavProfile');
     const elLogout = document.getElementById('authNavLogout');
 
-    if (!elRegister || !elLogin || !elLogout) return;
+    if (!elRegister || !elLogin || !elProfile || !elLogout) return;
 
     if (token) {
         elRegister.style.display = 'none';
         elLogin.style.display = 'none';
+        elProfile.style.display = 'list-item';
         elLogout.style.display = 'list-item';
     } else {
         elRegister.style.display = 'list-item';
         elLogin.style.display = 'list-item';
+        elProfile.style.display = 'none';
         elLogout.style.display = 'none';
     }
 
@@ -46,104 +34,15 @@ function updateAuthNav() {
     }
 }
 
-// Load cart from localStorage
-function loadCart() {
-    const savedCart = localStorage.getItem('tronexCart');
-    if (savedCart) {
-        cart = JSON.parse(savedCart);
-        updateCartUI();
-    }
-}
-
-// Save cart to localStorage
-function saveCart() {
-    localStorage.setItem('tronexCart', JSON.stringify(cart));
-}
-
 // Run on load
 updateAuthNav();
-
-// Open cart sidebar
-if (cartIcon && cartSidebar && cartOverlay) {
-    cartIcon.addEventListener('click', (e) => {
-        e.preventDefault();
-        cartSidebar.classList.add('open');
-        cartOverlay.classList.add('open');
-    });
-}
-
-// Close cart sidebar
-if (closeCartBtn) {
-    closeCartBtn.addEventListener('click', () => {
-        closeCart();
-    });
-}
-
-if (cartOverlay) {
-    cartOverlay.addEventListener('click', () => {
-        closeCart();
-    });
-}
-
-function closeCart() {
-    cartSidebar.classList.remove('open');
-    cartOverlay.classList.remove('open');
-}
-
-// Continue shopping
-if (continueShopping) {
-    continueShopping.addEventListener('click', () => {
-        closeCart();
-    });
-}
-
-// Add to cart functionality
-function handleAddToCart(button) {
-    const price = parseFloat(button.getAttribute('data-price'));
-    const name = button.getAttribute('data-name');
-    const carCard = button.closest('.car-card');
-    const carId = carCard ? carCard.getAttribute('data-car-id') : null;
-
-    if (!carId || Number.isNaN(price) || !name) return;
-
-    const existingItem = cart.find(item => item.id === carId);
-
-    if (existingItem) {
-        existingItem.quantity += 1;
-    } else {
-        cart.push({
-            id: carId,
-            name: name,
-            price: price,
-            quantity: 1
-        });
-    }
-
-    button.classList.add('added');
-    button.innerHTML = '<i class="fas fa-check"></i> Added!';
-    setTimeout(() => {
-        button.classList.remove('added');
-        button.innerHTML = '<i class="fas fa-shopping-cart"></i> Add to Cart';
-    }, 2000);
-
-    saveCart();
-    updateCartUI();
-    cartSidebar.classList.add('open');
-    cartOverlay.classList.add('open');
-}
+let landingCars = [];
 
 function setupCarsGridListeners() {
     const carsGrid = document.getElementById('carsGrid');
     if (!carsGrid) return;
 
     carsGrid.addEventListener('click', (event) => {
-        const addToCartBtn = event.target.closest('.btn-add-to-cart');
-        if (addToCartBtn && !addToCartBtn.disabled) {
-            event.preventDefault();
-            handleAddToCart(addToCartBtn);
-            return;
-        }
-
         const detailsBtn = event.target.closest('.btn-details');
         if (detailsBtn) {
             event.preventDefault();
@@ -156,109 +55,52 @@ function setupCarsGridListeners() {
     });
 }
 
-// Update cart UI
-function updateCartUI() {
-    if (!cartItemsContainer || !checkoutBtn || !subtotalEl || !taxAmountEl || !totalAmountEl) return;
-    if (cartCount) {
-        cartCount.textContent = cart.length;
-    }
-
-    if (cart.length === 0) {
-        cartItemsContainer.innerHTML = `
-            <div class="empty-cart-message">
-                <i class="fas fa-shopping-cart"></i>
-                <p>Your cart is empty</p>
-            </div>
-        `;
-        checkoutBtn.disabled = true;
-        subtotalEl.textContent = '$0.00';
-        taxAmountEl.textContent = '$0.00';
-        totalAmountEl.textContent = '$0.00';
-        return;
-    }
-
-    checkoutBtn.disabled = false;
-
-    // Render cart items
-    cartItemsContainer.innerHTML = cart.map((item, index) => `
-        <div class="cart-item">
-            <div class="cart-item-image">
-                <i class="fas fa-car-side"></i>
-            </div>
-            <div class="cart-item-details">
-                <div class="cart-item-name">${item.name}</div>
-                <div class="cart-item-price">$${item.price.toLocaleString()}</div>
-                <div class="cart-item-quantity">
-                    <button class="quantity-btn" onclick="decreaseQuantity(${index})">-</button>
-                    <input type="number" class="quantity-input" value="${item.quantity}" readonly>
-                    <button class="quantity-btn" onclick="increaseQuantity(${index})">+</button>
-                </div>
-            </div>
-            <button class="remove-from-cart" onclick="removeFromCart(${index})">
-                <i class="fas fa-trash"></i>
-            </button>
-        </div>
-    `).join('');
-
-    // Calculate totals
-    const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-    const tax = subtotal * 0.05;
-    const total = subtotal + tax;
-
-    subtotalEl.textContent = `$${subtotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    taxAmountEl.textContent = `$${tax.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    totalAmountEl.textContent = `$${total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-}
-
-// Increase quantity
-function increaseQuantity(index) {
-    cart[index].quantity += 1;
-    saveCart();
-    updateCartUI();
-}
-
-// Decrease quantity
-function decreaseQuantity(index) {
-    if (cart[index].quantity > 1) {
-        cart[index].quantity -= 1;
-    } else {
-        removeFromCart(index);
-        return;
-    }
-    saveCart();
-    updateCartUI();
-}
-
-// Remove from cart
-function removeFromCart(index) {
-    cart.splice(index, 1);
-    saveCart();
-    updateCartUI();
-}
-
-// Checkout functionality
-if (checkoutBtn) {
-    checkoutBtn.addEventListener('click', () => {
-        if (cart.length === 0) return;
-        
-        const cartData = JSON.stringify(cart, null, 2);
-        alert(`Proceeding to checkout with ${cart.length} vehicle(s)!\n\nCart Details:\n${cartData}\n\nTotal: ${totalAmountEl.textContent}`);
-        // TODO: Redirect to checkout page or process payment
-    });
-}
-
 // ==================== Search Form ====================
 const searchForm = document.getElementById('searchForm');
 if (searchForm) {
     searchForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        const make = document.getElementById('make').value;
-        const model = document.getElementById('model').value;
-        const year = document.getElementById('year').value;
-        
-        if (make && model && year) {
-            alert(`Searching for: ${year} ${make} ${model}\n\nRedirecting to filtered stock list...`);
-            // TODO: Redirect to stock-list page with filters
+        const make = String(document.getElementById('make').value || '').trim();
+        const model = String(document.getElementById('model').value || '').trim();
+        const year = Number(document.getElementById('year').value);
+
+        if (!make || !model || !year) return;
+        if (!Array.isArray(landingCars) || landingCars.length === 0) {
+            setSearchFeedback('Vehicle list is still loading. Please try again in a moment.', 'info');
+            return;
+        }
+
+        const query = {
+            make: make.toLowerCase(),
+            model: model.toLowerCase(),
+            year
+        };
+
+        const exactMatches = landingCars.filter((car) => {
+            const carMake = String(car.make || '').toLowerCase();
+            const carModel = String(car.model || '').toLowerCase();
+            const carYear = Number(car.year);
+            return carMake === query.make && carModel.includes(query.model) && carYear === query.year;
+        });
+        const exactAvailable = exactMatches.filter(isAvailableCar);
+
+        document.querySelector('#stock-list')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        if (exactAvailable.length > 0) {
+            const summary = `${exactAvailable.length} vehicle(s) available for ${year} ${make} ${model}.`;
+            setSearchFeedback(summary, 'success');
+            renderVehiclesInStock(exactAvailable, { limit: 8 });
+            return;
+        }
+
+        const similarCars = getSimilarCars(landingCars, query, exactMatches.map((car) => String(car._id))).slice(0, 8);
+        const unavailableMsg = 'Car Not Available at the moment.';
+        if (similarCars.length > 0) {
+            setSearchFeedback(`${unavailableMsg} Here are similar cars you may like.`, 'warning');
+            renderVehiclesInStock(similarCars, { limit: 8 });
+        } else {
+            setSearchFeedback(`${unavailableMsg} We currently have no close alternatives.`, 'warning');
+            renderVehiclesInStock([], { emptyMessage: unavailableMsg });
         }
     });
 }
@@ -322,7 +164,6 @@ document.querySelectorAll('.car-card, .feature-card, .stat-card').forEach(el => 
 });
 
 // ==================== Initialize ====================
-loadCart();
 setupCarsGridListeners();
 loadLandingVehicles();
 console.log('✅ Tronex Car Importers - Landing Page Loaded Successfully!');
@@ -338,10 +179,13 @@ async function loadLandingVehicles() {
             throw new Error('Invalid cars response');
         }
 
-        renderVehiclesInStock(result.data);
+        landingCars = result.data;
+        renderVehiclesInStock(landingCars);
+        setSearchFeedback('', '');
     } catch (error) {
         console.error('Failed to load vehicles for landing page:', error);
         carsGrid.innerHTML = '<p class="section-subtitle">Unable to load vehicles right now. Please visit the stock list page.</p>';
+        setSearchFeedback('Unable to search right now. Please try again later.', 'warning');
     }
 }
 
@@ -383,23 +227,71 @@ function formatKsh(value) {
     return `KSH ${toNumericValue(value).toLocaleString()}`;
 }
 
-function renderVehiclesInStock(cars) {
+function isAvailableCar(car) {
+    const status = String(car?.availability || 'available').toLowerCase();
+    return status !== 'sold' && status !== 'reserved';
+}
+
+function getSimilarCars(cars, query, excludedIds = []) {
+    const excluded = new Set((excludedIds || []).map((id) => String(id)));
+    const modelQuery = query.model;
+
+    return cars
+        .filter((car) => !excluded.has(String(car._id)))
+        .filter(isAvailableCar)
+        .map((car) => {
+            const carMake = String(car.make || '').toLowerCase();
+            const carModel = String(car.model || '').toLowerCase();
+            const carYear = Number(car.year);
+            const yearDiff = Number.isFinite(carYear) ? Math.abs(carYear - query.year) : 99;
+            let score = 0;
+
+            if (carMake === query.make) score += 5;
+            if (modelQuery && (carModel.includes(modelQuery) || modelQuery.includes(carModel))) score += 4;
+            if (yearDiff <= 1) score += 3;
+            else if (yearDiff <= 3) score += 1;
+            if (carMake.startsWith(query.make.slice(0, 2))) score += 1;
+
+            return { car, score };
+        })
+        .filter((entry) => entry.score > 0)
+        .sort((a, b) => {
+            if (b.score !== a.score) return b.score - a.score;
+            return new Date(b.car.createdAt) - new Date(a.car.createdAt);
+        })
+        .map((entry) => entry.car);
+}
+
+function setSearchFeedback(message, tone) {
+    const el = document.getElementById('searchFeedback');
+    if (!el) return;
+    if (!message) {
+        el.className = 'search-feedback';
+        el.textContent = '';
+        el.style.display = 'none';
+        return;
+    }
+    el.className = `search-feedback ${tone || 'info'}`;
+    el.textContent = message;
+    el.style.display = 'block';
+}
+
+function renderVehiclesInStock(cars, options = {}) {
     const carsGrid = document.getElementById('carsGrid');
     if (!carsGrid) return;
+    const limit = Number(options.limit) > 0 ? Number(options.limit) : 8;
+    const emptyMessage = options.emptyMessage || 'No vehicles available at the moment.';
 
     const sortedCars = [...cars].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    const visibleCars = sortedCars.slice(0, 8);
+    const visibleCars = sortedCars.slice(0, limit);
     if (visibleCars.length === 0) {
-        carsGrid.innerHTML = '<p class="section-subtitle">No vehicles available at the moment.</p>';
+        carsGrid.innerHTML = `<p class="section-subtitle">${emptyMessage}</p>`;
         return;
     }
 
     carsGrid.innerHTML = visibleCars.map((car) => {
         const invoiceTotal = getInvoiceTotalFromCosts(car.invoiceCosts);
         const displayPrice = invoiceTotal !== null ? invoiceTotal : toNumericValue(car.price);
-        const statusText = car.availability || 'Available';
-        const disabled = statusText === 'Sold' ? 'disabled' : '';
-        const buttonLabel = statusText === 'Sold' ? 'Sold Out' : 'Add to Cart';
         const thumbSrc = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
         const safeThumb = String(thumbSrc).replace(/"/g, '&quot;');
         const carName = car.name || `${car.make || ''} ${car.model || ''}`.trim();
@@ -427,9 +319,6 @@ function renderVehiclesInStock(cars) {
                     <div class="car-description">${car.description || 'View this vehicle on the stock list for full details.'}</div>
                     <div class="car-actions">
                         <button class="btn-details">View Details</button>
-                        <button class="btn-add-to-cart" ${disabled} data-price="${displayPrice}" data-name="${safeCarName}">
-                            <i class="fas fa-shopping-cart"></i> ${buttonLabel}
-                        </button>
                     </div>
                 </div>
             </div>

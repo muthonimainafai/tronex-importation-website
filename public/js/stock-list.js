@@ -2,6 +2,41 @@ let allCars = [];
 let filteredCars = [];
 let selectedMake = null;
 
+function updateAuthNav() {
+    const token = localStorage.getItem('tronex_token');
+    const elRegister = document.getElementById('authNavRegister');
+    const elLogin = document.getElementById('authNavLogin');
+    const elProfile = document.getElementById('authNavProfile');
+    const elLogout = document.getElementById('authNavLogout');
+
+    if (!elRegister || !elLogin || !elProfile || !elLogout) return;
+
+    if (token) {
+        elRegister.style.display = 'none';
+        elLogin.style.display = 'none';
+        elProfile.style.display = 'list-item';
+        elLogout.style.display = 'list-item';
+    } else {
+        elRegister.style.display = 'list-item';
+        elLogin.style.display = 'list-item';
+        elProfile.style.display = 'none';
+        elLogout.style.display = 'none';
+    }
+
+    const logoutLink = elLogout.querySelector('a');
+    if (logoutLink) {
+        logoutLink.onclick = () => {
+            localStorage.removeItem('tronex_token');
+            localStorage.removeItem('tronex_user');
+            try {
+                document.cookie = 'tronex_token=; Max-Age=0; Path=/; SameSite=Lax';
+            } catch (_) {}
+            updateAuthNav();
+            window.location.href = '/';
+        };
+    }
+}
+
 function sanitizeText(value, fallback = '') {
     if (value === null || value === undefined) return fallback;
     const text = String(value).trim();
@@ -52,6 +87,7 @@ function getInvoiceTotalFromCosts(invoiceCosts) {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    updateAuthNav();
     loadCars();
     setupEventListeners();
 });
