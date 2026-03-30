@@ -150,7 +150,7 @@
                     <!-- Purchase CTA (Left side) -->
                     <div class="detail-card" style="border-left:none;background:transparent;padding:0">
                         <div style="margin-top:12px">
-                            <button class="btn-inquire" style="width:100%" onclick="window.location.replace('/payment-details/<%= car._id %>?ts=' + Date.now())">
+                            <button type="button" class="btn-inquire btn-buy-now" style="width:100%" onclick="buyNow('<%= car._id %>')">
                                 <i class="fas fa-credit-card"></i> Buy Now
                             </button>
                         </div>

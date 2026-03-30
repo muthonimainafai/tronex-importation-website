@@ -12,6 +12,27 @@ function clearMsg() {
   el.style.display = 'none';
 }
 
+/** Safe in-app path only (prevents open redirects). */
+function getPostAuthRedirectUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const next = params.get('next');
+  if (!next || typeof next !== 'string') return null;
+  const trimmed = next.trim();
+  if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return null;
+  const lower = trimmed.toLowerCase();
+  if (lower.includes('javascript:') || lower.includes('data:')) return null;
+  return trimmed;
+}
+
+function preserveNextOnAuthSwitchLinks() {
+  const q = window.location.search;
+  if (!q) return;
+  const reg = document.getElementById('linkToRegister');
+  const log = document.getElementById('linkToLogin');
+  if (reg) reg.setAttribute('href', `/register${q}`);
+  if (log) log.setAttribute('href', `/login${q}`);
+}
+
 function saveSession(token, user) {
   localStorage.setItem('tronex_token', token);
   localStorage.setItem('tronex_user', JSON.stringify(user || {}));
@@ -58,7 +79,8 @@ async function registerFlow(e) {
     saveSession(data.token, data.user);
     setMsg('Registration successful. Redirecting…', 'success');
     setTimeout(() => {
-      window.location.href = '/my-profile';
+      const dest = getPostAuthRedirectUrl() || '/my-profile';
+      window.location.href = dest;
     }, 600);
   } catch (err) {
     setMsg(err.message || 'Registration failed', 'error');
@@ -75,6 +97,7 @@ async function loginFlow(e) {
   if (btn) btn.disabled = true;
 
   try {
+    const loginForm = document.getElementById('loginForm');
     const payload = {
       email: document.getElementById('email').value.trim(),
       password: document.getElementById('password').value
@@ -93,10 +116,15 @@ async function loginFlow(e) {
     }
 
     saveSession(data.token, data.user);
+    if (loginForm) loginForm.reset();
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    if (emailInput) emailInput.value = '';
+    if (passwordInput) passwordInput.value = '';
     setMsg('Login successful. Redirecting…', 'success');
     setTimeout(() => {
-      const next = new URLSearchParams(window.location.search).get('next');
-      window.location.href = next || '/';
+      const dest = getPostAuthRedirectUrl() || '/';
+      window.location.href = dest;
     }, 500);
   } catch (err) {
     setMsg(err.message || 'Login failed', 'error');
@@ -106,6 +134,7 @@ async function loginFlow(e) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  preserveNextOnAuthSwitchLinks();
   const page = window.__AUTH_PAGE__;
   if (page === 'register') {
     const form = document.getElementById('registerForm');
@@ -113,7 +142,9 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   if (page === 'login') {
     const form = document.getElementById('loginForm');
-    if (form) form.addEventListener('submit', loginFlow);
+    if (form) {
+      form.addEventListener('submit', loginFlow);
+    }
   }
 });
 

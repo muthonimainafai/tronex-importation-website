@@ -11,38 +11,17 @@
   <link rel="stylesheet" href="/css/payment-details.css">
   <style>
     .pay-wrap{max-width:1200px;margin:28px auto;padding:0 16px}
-    .pay-top{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
-    .pay-top h1{margin:0;font-size:22px}
-    .pay-note{color:rgba(0,0,0,.72);margin:0}
+    .pay-back-only{margin:0 0 16px}
     .btn-back{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.12);background:#fff;text-decoration:none;color:#111;font-weight:800}
-    .dl-wrap{display:flex;justify-content:flex-end;margin:10px 0 14px}
   </style>
 </head>
 <body>
   <div class="pay-wrap">
-    <div class="pay-top">
-      <div>
-        <h1>Payment Details</h1>
-        <p class="pay-note">Review the bank and M-Pesa details below, then proceed with payment for this vehicle.</p>
-      </div>
-      <a class="btn-back" href="/car/<%= car._id %>">← Back to car</a>
-    </div>
-
-    <div class="dl-wrap">
-      <a class="btn-back" href="/api/cars/<%= car._id %>/invoice/pdf">Download PDF</a>
-    </div>
+    <p class="pay-back-only"><a class="btn-back" href="/car/<%= car._id %>">← Back to car</a></p>
     <%- include('partials/tronex-payment-details.html', { car, invoice, customer }) %>
-
-    <div class="generate-invoice-actions">
-      <button class="btn-generate-invoice" type="button" onclick="generateInvoiceToEmail('<%= car._id %>')">
-        Generate Invoice
-      </button>
-      <div class="generate-invoice-msg" id="generateInvoiceMsg"></div>
-    </div>
   </div>
 
   <script src="/js/auth.js"></script>
   <script src="/js/payment.js?v=20260325"></script>
 </body>
 </html>
-

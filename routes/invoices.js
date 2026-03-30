@@ -107,7 +107,23 @@ function moneyKES(n) {
     return `KES ${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 }
 
-function buildPerCarInvoice(carDoc) {
+const ALLOWED_EARLY_PAYMENT_DISCOUNTS = new Set([10000, 20000, 30000]);
+
+function normalizeEarlyPaymentDiscount(raw) {
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return 0;
+    const rounded = Math.round(n);
+    return ALLOWED_EARLY_PAYMENT_DISCOUNTS.has(rounded) ? rounded : 0;
+}
+
+function earlyPaymentDiscountLabel(amount) {
+    if (amount === 30000) return 'Payment within 24hrs — KES 30,000';
+    if (amount === 20000) return 'Payment within 48hrs — KES 20,000';
+    if (amount === 10000) return 'Payment within 72hrs — KES 10,000';
+    return '';
+}
+
+function buildPerCarInvoice(carDoc, earlyPaymentDiscountRaw = 0) {
     const car = carDoc?.toObject ? carDoc.toObject() : (carDoc || {});
     const costs = car.invoiceCosts || {};
     const toNum = (v) => {
@@ -130,7 +146,9 @@ function buildPerCarInvoice(carDoc) {
     const itemizedNeedTotal = items.reduce((s, i) => s + i.value, 0);
     const dutyPayable = toNum(costs.dutyPayable);
     const discount = toNum(costs.discount);
-    const totalCosts = Math.max(0, itemizedNeedTotal + dutyPayable - discount);
+    const earlyPaymentDiscount = normalizeEarlyPaymentDiscount(earlyPaymentDiscountRaw);
+    const subtotalBeforeEarly = Math.max(0, itemizedNeedTotal + dutyPayable - discount);
+    const totalCosts = Math.max(0, subtotalBeforeEarly - earlyPaymentDiscount);
 
     return {
         currency: costs.currency || 'KES',
@@ -139,6 +157,9 @@ function buildPerCarInvoice(carDoc) {
         dutyPayable,
         itemizedDutyTaxesTotal: dutyPayable,
         discount,
+        earlyPaymentDiscount,
+        earlyPaymentDiscountLabel: earlyPaymentDiscountLabel(earlyPaymentDiscount),
+        subtotalBeforeEarly,
         totalCosts,
         bank: {
             bankName: 'Bank of Africa Kenya Ltd.',
@@ -150,6 +171,79 @@ function buildPerCarInvoice(carDoc) {
             paybill: '972900'
         }
     };
+}
+
+function renderProformaPdfContent(doc, car, customer, inv) {
+    doc.fontSize(18).fillColor('#8b0f1a').text('TRONEX CAR IMPORTERS LTD', { align: 'left' });
+    doc.fillColor('#000').fontSize(10).text('Proforma Invoice', { align: 'left' });
+    doc.moveDown(0.8);
+
+    const toName = (customer.profile?.legalName || '').trim() || `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
+    doc.fontSize(10)
+        .text(`Customer ID: ${customer.customerId || customer._id}`)
+        .text(`Customer Name: ${toName || '—'}`)
+        .text(`Mobile No: ${customer.mobileNumber || '—'}`)
+        .text(`Email: ${customer.email || '—'}`)
+        .text(`Country: ${customer.country || '—'}`)
+        .text(`National ID/Passport No: ${customer.profile?.idNumber || '—'}`)
+        .text(`Postal Address: ${customer.profile?.postalAddress || '—'}`)
+        .text(`Delivery Details: ${customer.profile?.deliveryDetails || '—'}`);
+    doc.moveDown(0.6);
+
+    doc.fontSize(12).text('Vehicle', { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(10)
+        .text(`Stock ID: ${car.internalStockNumber || '—'}`)
+        .text(`Make/Model: ${car.make || ''} ${car.model || ''} (${car.year || '—'})`)
+        .text(`Mileage: ${car.mileage?.toLocaleString?.() || car.mileage || '—'}`)
+        .text(`Transmission: ${car.transmission || '—'}`)
+        .text(`Fuel: ${car.fuel || '—'}`);
+    doc.moveDown(0.7);
+
+    doc.fontSize(12).text('Invoice Items', { underline: true });
+    doc.moveDown(0.3);
+    const startX = doc.x;
+    const colDesc = startX;
+    const colCost = startX + 360;
+
+    doc.fontSize(9).fillColor('#444');
+    doc.text('Description', colDesc, doc.y, { width: 340 });
+    doc.text('Cost', colCost, doc.y, { width: 140, align: 'right' });
+    doc.fillColor('#000');
+    doc.moveDown(0.6);
+
+    inv.items.forEach((it) => {
+        const y = doc.y;
+        doc.fontSize(9).text(it.label, colDesc, y, { width: 340 });
+        doc.text(moneyKES(it.value).replace('KES ', ''), colCost, y, { width: 140, align: 'right' });
+        doc.moveDown(0.5);
+    });
+
+    doc.moveDown(0.5);
+    doc.fontSize(10).text(`Itemized Need Analysis Total: ${moneyKES(inv.itemizedNeedTotal)}`, { align: 'right' });
+    doc.text(`Duty Payable: ${moneyKES(inv.dutyPayable)}`, { align: 'right' });
+    doc.text(`Discount: ${moneyKES(inv.discount)}`, { align: 'right' });
+    if (inv.earlyPaymentDiscount > 0) {
+        doc.text(`Early payment discount: ${moneyKES(inv.earlyPaymentDiscount)}`, { align: 'right' });
+        if (inv.earlyPaymentDiscountLabel) {
+            doc.fontSize(8).fillColor('#444').text(`(${inv.earlyPaymentDiscountLabel})`, { align: 'right' });
+            doc.fillColor('#000').fontSize(10);
+        }
+    }
+    doc.fontSize(11).text(`TOTAL COSTS: ${moneyKES(inv.totalCosts)}`, { align: 'right' });
+    doc.moveDown(0.8);
+
+    doc.fontSize(12).text('Bank Details', { underline: true });
+    doc.moveDown(0.3);
+    doc.fontSize(9)
+        .text(`Bank: ${inv.bank.bankName}`)
+        .text(`Account Name: ${inv.bank.accountName}`)
+        .text(`Branch Code: ${inv.bank.branchCode}`)
+        .text(`Branch: ${inv.bank.branch}`)
+        .text(`Account Number: ${inv.bank.accountNumber}`)
+        .text(`Swift Code: ${inv.bank.swiftCode}`)
+        .moveDown(0.3)
+        .text(`M-Pesa Paybill: ${inv.bank.paybill}`);
 }
 
 function resolveBrowserExecutablePath() {
@@ -663,7 +757,8 @@ router.get('/api/cars/:carId/invoice/pdf', authenticateToken, async (req, res) =
             return res.status(400).json({ success: false, message: 'Please upload your passport in My Profile before downloading the invoice.' });
         }
 
-        const inv = buildPerCarInvoice(car);
+        const earlyPaymentDiscount = normalizeEarlyPaymentDiscount(req.query.earlyDiscount);
+        const inv = buildPerCarInvoice(car, earlyPaymentDiscount);
         const doc = new PDFDocument({ size: 'A4', margin: 40 });
         const stock = (car.internalStockNumber || car._id || '').toString().replace(/[^a-zA-Z0-9\-_]/g, '');
         const filename = `TRONEX-PROFORMA-${stock || 'CAR'}.pdf`;
@@ -671,76 +766,7 @@ router.get('/api/cars/:carId/invoice/pdf', authenticateToken, async (req, res) =
         res.setHeader('Content-Type', 'application/pdf');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         doc.pipe(res);
-
-        // Letterhead
-        doc.fontSize(18).fillColor('#8b0f1a').text('TRONEX CAR IMPORTERS LTD', { align: 'left' });
-        doc.fillColor('#000').fontSize(10).text('Proforma Invoice', { align: 'left' });
-        doc.moveDown(0.8);
-
-        // Meta (auto-filled)
-        const toName = (customer.profile?.legalName || '').trim() || `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
-        doc.fontSize(10)
-            .text(`Customer ID: ${customer.customerId || customer._id}`)
-            .text(`Customer Name: ${toName || '—'}`)
-            .text(`Mobile No: ${customer.mobileNumber || '—'}`)
-            .text(`Email: ${customer.email || '—'}`)
-            .text(`Country: ${customer.country || '—'}`)
-            .text(`National ID/Passport No: ${customer.profile?.idNumber || '—'}`)
-            .text(`Postal Address: ${customer.profile?.postalAddress || '—'}`)
-            .text(`Delivery Details: ${customer.profile?.deliveryDetails || '—'}`);
-        doc.moveDown(0.6);
-
-        // Vehicle
-        doc.fontSize(12).text('Vehicle', { underline: true });
-        doc.moveDown(0.3);
-        doc.fontSize(10)
-            .text(`Stock ID: ${car.internalStockNumber || '—'}`)
-            .text(`Make/Model: ${car.make || ''} ${car.model || ''} (${car.year || '—'})`)
-            .text(`Mileage: ${car.mileage?.toLocaleString?.() || car.mileage || '—'}`)
-            .text(`Transmission: ${car.transmission || '—'}`)
-            .text(`Fuel: ${car.fuel || '—'}`);
-        doc.moveDown(0.7);
-
-        // Table
-        doc.fontSize(12).text('Invoice Items', { underline: true });
-        doc.moveDown(0.3);
-        const startX = doc.x;
-        const colDesc = startX;
-        const colCost = startX + 360;
-
-        doc.fontSize(9).fillColor('#444');
-        doc.text('Description', colDesc, doc.y, { width: 340 });
-        doc.text('Cost', colCost, doc.y, { width: 140, align: 'right' });
-        doc.fillColor('#000');
-        doc.moveDown(0.6);
-
-        inv.items.forEach(it => {
-            const y = doc.y;
-            doc.fontSize(9).text(it.label, colDesc, y, { width: 340 });
-            doc.text(moneyKES(it.value).replace('KES ', ''), colCost, y, { width: 140, align: 'right' });
-            doc.moveDown(0.5);
-        });
-
-        doc.moveDown(0.5);
-        doc.fontSize(10).text(`Itemized Need Analysis Total: ${moneyKES(inv.itemizedNeedTotal)}`, { align: 'right' });
-        doc.text(`Duty Payable: ${moneyKES(inv.dutyPayable)}`, { align: 'right' });
-        doc.text(`Discount: ${moneyKES(inv.discount)}`, { align: 'right' });
-        doc.fontSize(11).text(`TOTAL COSTS: ${moneyKES(inv.totalCosts)}`, { align: 'right' });
-        doc.moveDown(0.8);
-
-        // Bank details (constant)
-        doc.fontSize(12).text('Bank Details', { underline: true });
-        doc.moveDown(0.3);
-        doc.fontSize(9)
-            .text(`Bank: ${inv.bank.bankName}`)
-            .text(`Account Name: ${inv.bank.accountName}`)
-            .text(`Branch Code: ${inv.bank.branchCode}`)
-            .text(`Branch: ${inv.bank.branch}`)
-            .text(`Account Number: ${inv.bank.accountNumber}`)
-            .text(`Swift Code: ${inv.bank.swiftCode}`)
-            .moveDown(0.3)
-            .text(`M-Pesa Paybill: ${inv.bank.paybill}`);
-
+        renderProformaPdfContent(doc, car, customer, inv);
         doc.end();
     } catch (error) {
         console.error('❌ [PER-CAR PDF ERROR]:', error);
@@ -748,8 +774,8 @@ router.get('/api/cars/:carId/invoice/pdf', authenticateToken, async (req, res) =
     }
 });
 
-function proformaPdfToBuffer(car, customer) {
-    const inv = buildPerCarInvoice(car);
+function proformaPdfToBuffer(car, customer, earlyPaymentDiscount = 0) {
+    const inv = buildPerCarInvoice(car, earlyPaymentDiscount);
     const chunks = [];
 
     return new Promise((resolve, reject) => {
@@ -758,79 +784,7 @@ function proformaPdfToBuffer(car, customer) {
             doc.on('data', (chunk) => chunks.push(chunk));
             doc.on('end', () => resolve(Buffer.concat(chunks)));
             doc.on('error', (err) => reject(err));
-
-            // Letterhead
-            doc.fontSize(18).fillColor('#8b0f1a').text('TRONEX CAR IMPORTERS LTD', { align: 'left' });
-            doc.fillColor('#000').fontSize(10).text('Proforma Invoice', { align: 'left' });
-            doc.moveDown(0.8);
-
-            // Meta
-            const toName = (customer.profile?.legalName || '').trim()
-                || `${customer.firstName || ''} ${customer.lastName || ''}`.trim();
-
-            doc.fontSize(10)
-                .text(`Customer ID: ${customer.customerId || customer._id}`)
-                .text(`Customer Name: ${toName || '—'}`)
-                .text(`Mobile No: ${customer.mobileNumber || '—'}`)
-                .text(`Email: ${customer.email || '—'}`)
-                .text(`Country: ${customer.country || '—'}`)
-                .text(`National ID/Passport No: ${customer.profile?.idNumber || '—'}`)
-                .text(`Postal Address: ${customer.profile?.postalAddress || '—'}`)
-                .text(`Delivery Details: ${customer.profile?.deliveryDetails || '—'}`);
-
-            doc.moveDown(0.6);
-
-            // Vehicle
-            doc.fontSize(12).text('Vehicle', { underline: true });
-            doc.moveDown(0.3);
-            doc.fontSize(10)
-                .text(`Stock ID: ${car.internalStockNumber || '—'}`)
-                .text(`Make/Model: ${car.make || ''} ${car.model || ''} (${car.year || '—'})`)
-                .text(`Mileage: ${car.mileage?.toLocaleString?.() || car.mileage || '—'}`)
-                .text(`Transmission: ${car.transmission || '—'}`)
-                .text(`Fuel: ${car.fuel || '—'}`);
-            doc.moveDown(0.7);
-
-            // Table
-            doc.fontSize(12).text('Invoice Items', { underline: true });
-            doc.moveDown(0.3);
-            const startX = doc.x;
-            const colDesc = startX;
-            const colCost = startX + 360;
-
-            doc.fontSize(9).fillColor('#444');
-            doc.text('Description', colDesc, doc.y, { width: 340 });
-            doc.text('Cost', colCost, doc.y, { width: 140, align: 'right' });
-            doc.fillColor('#000');
-            doc.moveDown(0.6);
-
-            inv.items.forEach(it => {
-                const y = doc.y;
-                doc.fontSize(9).text(it.label, colDesc, y, { width: 340 });
-                doc.text(moneyKES(it.value).replace('KES ', ''), colCost, y, { width: 140, align: 'right' });
-                doc.moveDown(0.5);
-            });
-
-            doc.moveDown(0.5);
-            doc.fontSize(10).text(`Itemized Need Analysis Total: ${moneyKES(inv.itemizedNeedTotal)}`, { align: 'right' });
-            doc.text(`Duty Payable: ${moneyKES(inv.dutyPayable)}`, { align: 'right' });
-            doc.text(`Discount: ${moneyKES(inv.discount)}`, { align: 'right' });
-            doc.fontSize(11).text(`TOTAL COSTS: ${moneyKES(inv.totalCosts)}`, { align: 'right' });
-            doc.moveDown(0.8);
-
-            // Bank details (constant)
-            doc.fontSize(12).text('Bank Details', { underline: true });
-            doc.moveDown(0.3);
-            doc.fontSize(9)
-                .text(`Bank: ${inv.bank.bankName}`)
-                .text(`Account Name: ${inv.bank.accountName}`)
-                .text(`Branch Code: ${inv.bank.branchCode}`)
-                .text(`Branch: ${inv.bank.branch}`)
-                .text(`Account Number: ${inv.bank.accountNumber}`)
-                .text(`Swift Code: ${inv.bank.swiftCode}`)
-                .moveDown(0.3)
-                .text(`M-Pesa Paybill: ${inv.bank.paybill}`);
-
+            renderProformaPdfContent(doc, car, customer, inv);
             doc.end();
         } catch (e) {
             reject(e);
@@ -858,7 +812,8 @@ router.post('/api/cars/:carId/invoice/email', authenticateToken, async (req, res
             });
         }
 
-        const pdfBuffer = await proformaPdfToBuffer(car, customer);
+        const earlyPaymentDiscount = normalizeEarlyPaymentDiscount(req.body?.earlyPaymentDiscount);
+        const pdfBuffer = await proformaPdfToBuffer(car, customer, earlyPaymentDiscount);
         const stock = (car.internalStockNumber || car._id || '').toString().replace(/[^a-zA-Z0-9\-_]/g, '');
         const filename = `TRONEX-PROFORMA-${stock || 'CAR'}.pdf`;
 
