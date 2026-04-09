@@ -13,6 +13,11 @@ const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const authRoutes = require('./routes/auth');
 const invoiceRoutes = require('./routes/invoices');
+const {
+  requireAdmin,
+  signAdminPanelToken,
+  secureComparePassword
+} = require('./middleware/adminAuth');
 // ==================== MULTER CONFIGURATION ====================
 
 // Ensure upload directories exist
@@ -453,26 +458,29 @@ app.get('/admin', (req, res) => {
   res.redirect('/admin-login');
 });
 
-// Admin login API
+// Admin login API — returns signed JWT (store as adminToken; send Authorization on admin requests)
 app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  
-  if (password === correctPassword) {
-      res.json({ success: true, message: 'Login successful' });
-  } else {
-      res.json({ success: false, message: 'Invalid password' });
+  const { password } = req.body || {};
+  const configured = process.env.ADMIN_PASSWORD;
+
+  if (process.env.NODE_ENV === 'production' && !configured) {
+    return res.status(503).json({ success: false, message: 'Admin login is not configured.' });
   }
+
+  const devFallback = process.env.NODE_ENV === 'production' ? null : 'admin123';
+  const expected = configured != null && configured !== '' ? configured : devFallback;
+
+  if (!expected || !secureComparePassword(String(password || ''), expected)) {
+    return res.status(401).json({ success: false, message: 'Invalid password' });
+  }
+
+  const token = signAdminPanelToken();
+  return res.json({ success: true, message: 'Login successful', token });
 });
 
 // Admin dashboard page (actual admin UI)
 app.get('/admin-dashboard', (req, res) => {
   res.render('admin');
-});
-
-// Admin invoice builder page
-app.get('/admin-invoices', (req, res) => {
-  res.render('admin-invoices');
 });
 
 // Manage cars route
@@ -554,20 +562,8 @@ app.get('/api/cars/:id', async (req, res) => {
 });
 
 //=====================ADMIN API ROUTES====================
-// Admin login
-app.post('/api/admin/login', (req, res) => {
-  const { password } = req.body;
-  const correctPassword = process.env.ADMIN_PASSWORD || 'admin123';
-  
-  if (password === correctPassword) {
-      res.json({ success: true, message: 'Login successful' });
-  } else {
-      res.json({ success: false, message: 'Invalid password' });
-  }
-});
-
 //CREATE new car
-app.post('/api/admin/cars', async (req, res) => {
+app.post('/api/admin/cars', requireAdmin, async (req, res) => {
   try {
       console.log('📨 [POST /api/admin/cars] Received data:', req.body);
 
@@ -658,7 +654,7 @@ app.post('/api/admin/cars', async (req, res) => {
 });
 
  //UPDATE car
-app.put('/api/admin/cars/:id', async (req, res) => {
+app.put('/api/admin/cars/:id', requireAdmin, async (req, res) => {
   try {
       console.log('🔄 [UPDATE START] Car ID:', req.params.id);
 
@@ -754,7 +750,7 @@ app.put('/api/admin/cars/:id', async (req, res) => {
 });
 
 // DELETE car
-app.delete('/api/admin/cars/:id', async (req, res) => {
+app.delete('/api/admin/cars/:id', requireAdmin, async (req, res) => {
   try {
       const car = await Car.findByIdAndDelete(req.params.id);
 
@@ -783,7 +779,7 @@ app.delete('/api/admin/cars/:id', async (req, res) => {
 // ==================== IMAGE UPLOAD ROUTES ====================
 
 // Upload single image
-app.post('/api/upload/image', upload.single('image'), async (req, res) => {
+app.post('/api/upload/image', requireAdmin, upload.single('image'), async (req, res) => {
   try {
       if (!req.file) {
           return res.status(400).json({
@@ -820,7 +816,7 @@ app.post('/api/upload/image', upload.single('image'), async (req, res) => {
 });
 
 // Upload multiple images
-app.post('/api/upload/images', upload.array('images', 10), async (req, res) => {
+app.post('/api/upload/images', requireAdmin, upload.array('images', 10), async (req, res) => {
   try {
       if (!req.files || req.files.length === 0) {
           return res.status(400).json({
@@ -863,7 +859,7 @@ app.post('/api/upload/images', upload.array('images', 10), async (req, res) => {
 });
 
 // Delete image
-app.delete('/api/upload/image/:filename', (req, res) => {
+app.delete('/api/upload/image/:filename', requireAdmin, (req, res) => {
   try {
       const { filename } = req.params;
       const filePath = path.join(uploadDir, filename);

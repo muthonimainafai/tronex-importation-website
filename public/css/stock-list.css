@@ -32,9 +32,9 @@ body {
 }
 
 .nav-container {
-    max-width: 1400px;
-    margin: 0 auto;
-    padding: 1rem 2rem;
+    max-width: none;
+    margin: 0;
+    padding: 0.9rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -44,12 +44,14 @@ body {
     display: flex;
     align-items: center;
     gap: 0.8rem;
-    font-size: 1.5rem;
+    font-size: 1.1rem;
     font-weight: 700;
 }
 
-.nav-logo i {
-    color: #667eea;
+.nav-logo-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
 }
 
 .nav-logo a {
@@ -462,19 +464,6 @@ body {
     position: absolute;
 }
 
-.badge {
-    position: absolute;
-    top: 15px;
-    left: 15px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 0.6rem 1rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 600;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-}
-
 .status-badge {
     position: absolute;
     top: 15px;
@@ -486,19 +475,53 @@ body {
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
+@keyframes availableDanceBadge {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+    25% { transform: translateY(-3px) rotate(-2deg) scale(1.05); }
+    50% { transform: translateY(0) rotate(0deg) scale(1.08); }
+    75% { transform: translateY(-3px) rotate(2deg) scale(1.05); }
+}
+
+@keyframes reservedPulseBadge {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.06); filter: brightness(1.12); }
+}
+
+@keyframes soldGlitchBadge {
+    0%, 100% { transform: translateX(0); filter: grayscale(0.2); }
+    20% { transform: translateX(-1px); }
+    40% { transform: translateX(1px); }
+    60% { transform: translateX(-1px); }
+    80% { transform: translateX(1px); }
+}
+
 .status-badge.available {
-    background: #d4edda;
-    color: #155724;
+    background: linear-gradient(135deg, #69f0ae 0%, #00e676 45%, #00c853 100%);
+    color: #ffffff;
+    box-shadow: 0 12px 24px rgba(0, 200, 83, 0.4);
+    animation: availableDanceBadge 1s ease-in-out infinite;
 }
 
 .status-badge.reserved {
-    background: #fff3cd;
-    color: #856404;
+    background: linear-gradient(135deg, #ffd180 0%, #ffb300 55%, #ff8f00 100%);
+    color: #4e342e;
+    box-shadow: 0 10px 22px rgba(255, 143, 0, 0.35);
+    animation: reservedPulseBadge 1.35s ease-in-out infinite;
 }
 
 .status-badge.sold {
-    background: #f8d7da;
-    color: #721c24;
+    background: linear-gradient(135deg, #ff8a80 0%, #ff5252 55%, #ff1744 100%);
+    color: #ffffff;
+    box-shadow: 0 10px 22px rgba(255, 23, 68, 0.34);
+    animation: soldGlitchBadge 1.8s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .status-badge.available,
+    .status-badge.reserved,
+    .status-badge.sold {
+        animation: none;
+    }
 }
 
 .car-details {

@@ -44,9 +44,9 @@ body {
 }
 
 .nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem 20px;
+    max-width: none;
+    margin: 0;
+    padding: 0.9rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -55,8 +55,8 @@ body {
 .nav-logo {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
-    font-size: 1.8rem;
+    gap: 0.65rem;
+    font-size: 1.2rem;
     font-weight: 700;
     background: var(--gradient-primary);
     -webkit-background-clip: text;
@@ -65,8 +65,10 @@ body {
     cursor: pointer;
 }
 
-.nav-logo i {
-    -webkit-text-fill-color: var(--primary-color);
+.nav-logo-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
 }
 
 .nav-menu {
@@ -759,27 +761,64 @@ body {
     transform: scale(1.05);
 }
 
-.car-badge-featured,
-.car-badge-new {
+.car-status-badge {
     position: absolute;
-    top: 15px;
-    right: 15px;
-    padding: 0.5rem 1rem;
-    border-radius: 20px;
-    font-size: 0.8rem;
-    font-weight: 700;
+    top: 14px;
+    right: 14px;
+    padding: 0.45rem 0.9rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    color: #fff;
 }
 
-.car-badge-featured {
-    background: #ff6b35;
-    color: var(--white);
+@keyframes landingAvailableDance {
+    0%, 100% { transform: translateY(0) rotate(0deg) scale(1); }
+    25% { transform: translateY(-3px) rotate(-2deg) scale(1.05); }
+    50% { transform: translateY(0) rotate(0deg) scale(1.08); }
+    75% { transform: translateY(-3px) rotate(2deg) scale(1.05); }
 }
 
-.car-badge-new {
-    background: #27ae60;
-    color: var(--white);
+@keyframes landingReservedPulse {
+    0%, 100% { transform: scale(1); filter: brightness(1); }
+    50% { transform: scale(1.06); filter: brightness(1.12); }
+}
+
+@keyframes landingSoldGlitch {
+    0%, 100% { transform: translateX(0); filter: grayscale(0.2); }
+    20% { transform: translateX(-1px); }
+    40% { transform: translateX(1px); }
+    60% { transform: translateX(-1px); }
+    80% { transform: translateX(1px); }
+}
+
+.car-status-badge.available {
+    background: linear-gradient(135deg, #69f0ae 0%, #00e676 45%, #00c853 100%);
+    box-shadow: 0 10px 22px rgba(0, 200, 83, 0.4);
+    animation: landingAvailableDance 1s ease-in-out infinite;
+}
+
+.car-status-badge.reserved {
+    background: linear-gradient(135deg, #ffd180 0%, #ffb300 55%, #ff8f00 100%);
+    color: #4e342e;
+    box-shadow: 0 10px 22px rgba(255, 143, 0, 0.35);
+    animation: landingReservedPulse 1.35s ease-in-out infinite;
+}
+
+.car-status-badge.sold {
+    background: linear-gradient(135deg, #ff8a80 0%, #ff5252 55%, #ff1744 100%);
+    box-shadow: 0 10px 22px rgba(255, 23, 68, 0.34);
+    animation: landingSoldGlitch 1.8s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .car-status-badge.available,
+    .car-status-badge.reserved,
+    .car-status-badge.sold {
+        animation: none;
+    }
 }
 
 .car-price {

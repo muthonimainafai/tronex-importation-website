@@ -10,6 +10,7 @@ const User = require('../models/User');
 const PDFDocument = require('pdfkit');
 const authRoutes = require('./auth');
 const authenticateToken = authRoutes.authenticateToken;
+const { requireAdminOrCustomer } = require('../middleware/adminAuth');
 let puppeteer = null;
 try {
     puppeteer = require('puppeteer-core');
@@ -22,6 +23,12 @@ try {
 } catch (e) {
     console.warn('⚠️ [INVOICES] resend package not installed. Email sending disabled.');
 }
+let nodemailer = null;
+try {
+    nodemailer = require('nodemailer');
+} catch (e) {
+    console.warn('⚠️ [INVOICES] nodemailer package not installed. SMTP fallback disabled.');
+}
 
 function getResendClient() {
     const apiKey = process.env.RESEND_API_KEY;
@@ -29,35 +36,82 @@ function getResendClient() {
     return new Resend(apiKey);
 }
 
+function getSmtpTransport() {
+    if (!nodemailer) return null;
+    if (!process.env.SMTP_HOST || !process.env.SMTP_PORT || !process.env.SMTP_USER || !process.env.SMTP_PASS) {
+        return null;
+    }
+
+    const port = Number(process.env.SMTP_PORT);
+    const secure = String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+
+    return nodemailer.createTransport({
+        host: process.env.SMTP_HOST,
+        port,
+        secure,
+        auth: {
+            user: process.env.SMTP_USER,
+            pass: process.env.SMTP_PASS
+        }
+    });
+}
+
 async function sendInvoiceEmailWithAttachment({ to, subject, text, filename, pdfBuffer }) {
     const resend = getResendClient();
     const fromEmail = process.env.EMAIL_FROM;
 
-    if (!resend || !fromEmail) {
-        const missing = [];
-        if (!process.env.RESEND_API_KEY) missing.push('RESEND_API_KEY');
-        if (!fromEmail) missing.push('EMAIL_FROM');
-        throw new Error('Resend not configured. Missing: ' + missing.join(', '));
+    if (!fromEmail) {
+        throw new Error('Email sender missing. Set EMAIL_FROM.');
     }
 
-    const result = await resend.emails.send({
+    // Prefer Resend when configured
+    if (resend) {
+        const result = await resend.emails.send({
+            from: fromEmail,
+            to,
+            subject,
+            text,
+            attachments: [
+                {
+                    filename,
+                    content: pdfBuffer.toString('base64')
+                }
+            ]
+        });
+
+        if (result && result.error) {
+            throw new Error(result.error.message || 'Resend failed to send email');
+        }
+
+        return {
+            provider: 'resend',
+            id: result && result.data ? result.data.id : null
+        };
+    }
+
+    // Fallback to SMTP mailbox
+    const smtpTransport = getSmtpTransport();
+    if (!smtpTransport) {
+        throw new Error('No email provider configured. Set RESEND_API_KEY or SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS.');
+    }
+
+    const info = await smtpTransport.sendMail({
         from: fromEmail,
-        to,
+        to: Array.isArray(to) ? to.join(', ') : to,
         subject,
         text,
         attachments: [
             {
                 filename,
-                content: pdfBuffer.toString('base64')
+                content: pdfBuffer
             }
         ]
     });
 
-    if (result && result.error) {
-        throw new Error(result.error.message || 'Resend failed to send email');
-    }
-
-    return result && result.data ? result.data : null;
+    return {
+        provider: 'smtp',
+        id: info && info.messageId ? info.messageId : null
+    };
 }
 
 async function resolveCarByAnyId(carId) {
@@ -230,7 +284,22 @@ function renderProformaPdfContent(doc, car, customer, inv) {
             doc.fillColor('#000').fontSize(10);
         }
     }
-    doc.fontSize(11).text(`TOTAL COSTS: ${moneyKES(inv.totalCosts)}`, { align: 'right' });
+    // Payable total = same logic as payment page (base − selected early discount) when a discount applies.
+    doc.moveDown(0.35);
+    doc.fontSize(12).fillColor('#8b0f1a').text(
+        inv.earlyPaymentDiscount > 0
+            ? `AMOUNT DUE (after your selected early payment discount): ${moneyKES(inv.totalCosts)}`
+            : `AMOUNT DUE: ${moneyKES(inv.totalCosts)}`,
+        { align: 'right' }
+    );
+    doc.fillColor('#000').fontSize(9);
+    if (inv.earlyPaymentDiscount > 0) {
+        doc.text(
+            'This amount matches the Amount Due on the payment page for the discount you selected.',
+            { align: 'right' }
+        );
+    }
+    doc.fontSize(10);
     doc.moveDown(0.8);
 
     doc.fontSize(12).text('Bank Details', { underline: true });
@@ -484,239 +553,13 @@ async function invoicePdfToBuffer(invoice) {
     });
 }
 
-// ============================================
-// CREATE INVOICE - Admin creates invoice for a car
-// ============================================
-router.post('/api/admin/invoices', authenticateToken, async (req, res) => {
-    try {
-        console.log('📋 [CREATE INVOICE] Creating invoice by admin:', req.user.id);
-        
-        const { carId, invoiceItems, bankDetails, mpesaDetails, expiryDate, claimClause } = req.body;
-
-        // Validate required fields
-        if (!carId) {
-            console.warn('⚠️ [CREATE INVOICE] Car ID missing');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Car ID is required' 
-            });
-        }
-
-        if (!expiryDate) {
-            console.warn('⚠️ [CREATE INVOICE] Expiry date missing');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Expiry date is required' 
-            });
-        }
-
-        // Get car details
-        const car = await resolveCarByAnyId(carId);
-        if (!car) {
-            console.error('❌ [CREATE INVOICE] Car not found:', carId);
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Car not found' 
-            });
-        }
-
-        console.log('✅ [CREATE INVOICE] Car found:', car.name);
-
-        // Create invoice
-        const invoice = new Invoice({
-            carId: car._id,
-            carDetails: {
-                make: car.make,
-                model: car.model,
-                year: car.year,
-                internalStockNumber: car.internalStockNumber,
-                externalStockNumber: car.externalStockNumber,
-                price: car.price,
-                type: car.type,
-                bodyType: car.bodyType,
-                color: car.color,
-                interiorColor: car.interiorColor,
-                transmission: car.transmission,
-                fuel: car.fuel,
-                drive: car.drive,
-                engineCapacity: car.engineCapacity,
-                mileage: car.mileage,
-                doors: car.doors,
-                seats: car.seats,
-                trunk: car.trunk,
-                registration: car.registration,
-                description: car.description,
-                _id: car._id
-            },
-            invoiceItems: invoiceItems || [],
-            bankDetails: bankDetails || {},
-            mpesaDetails: mpesaDetails || {},
-            expiryDate: new Date(expiryDate),
-            claimClause,
-            createdBy: req.user?.id || null,
-            status: 'Draft'
-        });
-
-        await invoice.save();
-        console.log('✅ [CREATE INVOICE] Invoice created:', invoice.invoiceNumber);
-
-        res.json({ 
-            success: true, 
-            message: 'Invoice created successfully',
-            data: invoice 
-        });
-    } catch (error) {
-        console.error('❌ [CREATE INVOICE ERROR]:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error creating invoice: ' + error.message 
-        });
-    }
-});
-
-// ============================================
-// GENERATE INVOICE FROM MANAGE-CARS INPUTS
-// - Creates an Invoice record (admin-visible)
-// - Sends Invoice PDF to Tronex + Faith emails
-// ============================================
-router.post('/api/admin/cars/:carId/generate-invoice', async (req, res) => {
-    try {
-        const { carId } = req.params;
-        const { invoiceCosts, expiryDays } = req.body || {};
-
-        // Choose an invoice creator:
-        // - If a JWT was provided elsewhere (req.user), use it.
-        // - Otherwise, allow null (createdBy is no longer required).
-        const creatorId = req.user?.id || null;
-
-        const car = await resolveCarByAnyId(carId);
-        if (!car) {
-            return res.status(404).json({ success: false, message: 'Car not found' });
-        }
-
-        const costsForInvoice = invoiceCosts && typeof invoiceCosts === 'object' ? invoiceCosts : (car.invoiceCosts || {});
-        const perCar = buildPerCarInvoice({ invoiceCosts: costsForInvoice });
-
-        const expiry = (() => {
-            const days = Number(expiryDays || process.env.INVOICE_EXPIRY_DAYS || 30);
-            return new Date(Date.now() + Math.max(0, days) * 24 * 60 * 60 * 1000);
-        })();
-
-        const invoiceItems = (perCar.items || [])
-            .map(it => ({ description: it.label, cost: Number(it.value || 0) }))
-            .filter(it => Number.isFinite(it.cost));
-
-        // Ensure duty payable (and discount) are included in invoice totals.
-        // The invoice schema calculates `subtotal` as the sum of `invoiceItems`,
-        // so duty must be an item for totals to reflect it.
-        if (Number.isFinite(perCar.dutyPayable) && Number(perCar.dutyPayable) > 0) {
-            invoiceItems.push({
-                description: 'Duty Payable',
-                cost: Number(perCar.dutyPayable)
-            });
-        }
-
-        if (Number.isFinite(perCar.discount) && Number(perCar.discount) > 0) {
-            // Discount reduces total, so represent it as a negative line.
-            invoiceItems.push({
-                description: 'Discount',
-                cost: -Number(perCar.discount)
-            });
-        }
-
-        const invoice = new Invoice({
-            carId: car._id,
-            carDetails: {
-                make: car.make,
-                model: car.model,
-                year: car.year,
-                internalStockNumber: car.internalStockNumber,
-                externalStockNumber: car.externalStockNumber,
-                price: car.price,
-                type: car.type,
-                bodyType: car.bodyType,
-                color: car.color,
-                interiorColor: car.interiorColor,
-                transmission: car.transmission,
-                fuel: car.fuel,
-                drive: car.drive,
-                engineCapacity: car.engineCapacity,
-                mileage: car.mileage,
-                doors: car.doors,
-                seats: car.seats,
-                trunk: car.trunk,
-                registration: car.registration,
-                description: car.description,
-                _id: car._id
-            },
-            invoiceItems,
-            bankDetails: {
-                bankName: perCar.bank.bankName,
-                accountName: perCar.bank.accountName,
-                branchCode: perCar.bank.branchCode,
-                branch: perCar.bank.branch,
-                accountNumber: perCar.bank.accountNumber,
-                swiftCode: perCar.bank.swiftCode
-            },
-            mpesaDetails: {
-                paybillNumber: perCar.bank.paybill,
-                accountName: 'TRONEX'
-            },
-            expiryDate: expiry,
-            claimClause: undefined,
-            createdBy: creatorId,
-            status: 'Issued'
-        });
-
-        await invoice.save();
-
-        let emailSent = false;
-        let emailError = null;
-
-        // Email using Resend if configured.
-        const recipients = ['tronexcarimportersltd@gmail.com', 'faithmaina393@gmail.com'];
-        const resend = getResendClient();
-
-        if (resend && process.env.EMAIL_FROM) {
-            const pdfBuffer = await invoicePdfToBuffer(invoice);
-            const attachmentName = `${invoice.invoiceNumber || invoice._id}.pdf`;
-
-            try {
-                const sendResult = await sendInvoiceEmailWithAttachment({
-                    to: recipients,
-                    subject: `TRONEX Invoice ${invoice.invoiceNumber} - ${car.make} ${car.model}`,
-                    text: `Hello,\n\nPlease find attached invoice ${invoice.invoiceNumber} for ${car.make} ${car.model}.\n\nRegards,\nTRONEX`,
-                    filename: attachmentName,
-                    pdfBuffer
-                });
-                console.log('✅ [INVOICE EMAIL] Sent with Resend id:', sendResult?.id || 'n/a');
-                emailSent = true;
-            } catch (e) {
-                emailError = e && e.message ? e.message : String(e);
-                console.error('❌ [INVOICE EMAIL ERROR]:', emailError);
-            }
-        } else {
-            emailError = 'Resend not configured (missing RESEND_API_KEY or EMAIL_FROM); invoice created but email not sent.';
-        }
-
-        return res.json({
-            success: true,
-            message: 'Invoice created successfully',
-            data: {
-                invoice,
-                email: { sent: emailSent, error: emailError }
-            }
-        });
-    } catch (error) {
-        console.error('❌ [GENERATE INVOICE ERROR]:', error);
-        res.status(500).json({ success: false, message: 'Error generating invoice: ' + error.message });
-    }
-});
+// Proforma PDF is built from car invoiceCosts + customer profile and emailed from POST /api/cars/:carId/invoice/email (payment page).
+// Invoice model + helpers remain for stored invoices (e.g. GET by car) and HTML/PDF rendering paths.
 
 // ============================================
 // DOWNLOAD INVOICE PDF - Admin/Customer downloads invoice as PDF
 // ============================================
-router.get('/api/invoices/:invoiceId/pdf', authenticateToken, async (req, res) => {
+router.get('/api/invoices/:invoiceId/pdf', requireAdminOrCustomer, async (req, res) => {
     try {
         const resolved = await resolveInvoiceByAnyId(req.params.invoiceId);
         if (!resolved) {
@@ -792,7 +635,106 @@ function proformaPdfToBuffer(car, customer, earlyPaymentDiscount = 0) {
     });
 }
 
-// Customer endpoint: email invoice PDF to customer email + Tronex addresses
+/** Comma-separated internal recipients (company / CEO). Customer email is always added separately. */
+function getProformaInvoiceCcEmails() {
+    const raw =
+        process.env.INVOICE_CC_EMAILS ||
+        'tronexcarimportersltd@gmail.com,faithmaina393@gmail.com';
+    return [...new Set(raw.split(/[,;\s]+/).map((e) => e.trim()).filter(Boolean))];
+}
+
+function buildInvoiceItemsFromProforma(perCar) {
+    const items = (perCar.items || [])
+        .map((it) => ({ description: it.label, cost: Number(it.value) || 0 }))
+        .filter((it) => Number.isFinite(it.cost));
+    if (Number.isFinite(perCar.dutyPayable) && perCar.dutyPayable > 0) {
+        items.push({ description: 'Duty Payable', cost: Number(perCar.dutyPayable) });
+    }
+    if (Number.isFinite(perCar.discount) && perCar.discount > 0) {
+        items.push({ description: 'Discount', cost: -Number(perCar.discount) });
+    }
+    if (Number.isFinite(perCar.earlyPaymentDiscount) && perCar.earlyPaymentDiscount > 0) {
+        const hint = perCar.earlyPaymentDiscountLabel ? ` (${perCar.earlyPaymentDiscountLabel})` : '';
+        items.push({
+            description: `Early payment discount${hint}`,
+            cost: -Number(perCar.earlyPaymentDiscount)
+        });
+    }
+    return items;
+}
+
+/**
+ * Persist a proforma as an Invoice row (reporting). carDetails omits `price` so Invoice pre-save
+ * totalCost equals line-item subtotal (matches PDF “TOTAL COSTS”).
+ */
+async function createProformaInvoiceRecord(car, customer, earlyPaymentDiscount) {
+    const perCar = buildPerCarInvoice(car, earlyPaymentDiscount);
+    const expiryDays = Number(process.env.INVOICE_EXPIRY_DAYS || 30);
+    const expiryDate = new Date(Date.now() + Math.max(0, expiryDays) * 86400000);
+
+    const invoice = new Invoice({
+        carId: car._id,
+        customerId: customer._id,
+        carDetails: {
+            make: car.make,
+            model: car.model,
+            year: car.year,
+            internalStockNumber: car.internalStockNumber,
+            externalStockNumber: car.externalStockNumber,
+            listPriceKes: car.price,
+            /** Payable total after invoice line items, duty, invoice discount, and selected early payment discount */
+            finalAmountDueKes: perCar.totalCosts,
+            subtotalBeforeEarlyPaymentKes: perCar.subtotalBeforeEarly,
+            earlyPaymentDiscountAppliedKes: perCar.earlyPaymentDiscount,
+            type: car.type,
+            bodyType: car.bodyType,
+            color: car.color,
+            interiorColor: car.interiorColor,
+            transmission: car.transmission,
+            fuel: car.fuel,
+            drive: car.drive,
+            engineCapacity: car.engineCapacity,
+            mileage: car.mileage,
+            doors: car.doors,
+            seats: car.seats,
+            trunk: car.trunk,
+            registration: car.registration,
+            description: car.description,
+            _id: car._id
+        },
+        customerDetails: {
+            customerId: (customer.customerId || customer._id).toString(),
+            firstName: customer.firstName,
+            lastName: customer.lastName,
+            email: customer.email,
+            mobileNumber: customer.mobileNumber,
+            address: customer.address,
+            city: customer.city,
+            country: customer.country
+        },
+        invoiceItems: buildInvoiceItemsFromProforma(perCar),
+        bankDetails: {
+            bankName: perCar.bank.bankName,
+            accountName: perCar.bank.accountName,
+            branchCode: perCar.bank.branchCode,
+            branch: perCar.bank.branch,
+            accountNumber: perCar.bank.accountNumber,
+            swiftCode: perCar.bank.swiftCode
+        },
+        mpesaDetails: {
+            paybillNumber: String(perCar.bank.paybill || ''),
+            accountName: 'TRONEX'
+        },
+        expiryDate,
+        status: 'Issued',
+        notes: `Customer proforma from website. Payable amount (after selected early payment discount if any): KES ${perCar.totalCosts.toFixed(2)}.`
+    });
+
+    await invoice.save();
+    return invoice;
+}
+
+// Customer endpoint: email proforma PDF to the customer + internal recipients (CEO/company)
 router.post('/api/cars/:carId/invoice/email', authenticateToken, async (req, res) => {
     try {
         const car = await resolveCarByAnyId(req.params.carId);
@@ -801,43 +743,72 @@ router.post('/api/cars/:carId/invoice/email', authenticateToken, async (req, res
         const customer = await User.findById(req.user.id);
         if (!customer) return res.status(404).json({ success: false, message: 'Customer not found' });
 
-        const missing = [];
-        if (!process.env.RESEND_API_KEY) missing.push('RESEND_API_KEY');
-        if (!process.env.EMAIL_FROM) missing.push('EMAIL_FROM');
-
-        if (missing.length) {
+        const hasEmailProvider = Boolean(getResendClient()) || Boolean(getSmtpTransport());
+        if (!process.env.EMAIL_FROM || !hasEmailProvider) {
             return res.status(500).json({
                 success: false,
-                message: 'Resend not configured. Missing: ' + missing.join(', ')
+                message: 'Email not configured. Set EMAIL_FROM + RESEND_API_KEY OR EMAIL_FROM + SMTP_HOST/SMTP_PORT/SMTP_USER/SMTP_PASS.'
             });
         }
 
         const earlyPaymentDiscount = normalizeEarlyPaymentDiscount(req.body?.earlyPaymentDiscount);
+
+        let invoice;
+        try {
+            invoice = await createProformaInvoiceRecord(car, customer, earlyPaymentDiscount);
+        } catch (e) {
+            console.error('❌ [PROFORMA SAVE ERROR]:', e);
+            return res.status(500).json({
+                success: false,
+                message: 'Could not save invoice record: ' + (e.message || String(e))
+            });
+        }
+
         const pdfBuffer = await proformaPdfToBuffer(car, customer, earlyPaymentDiscount);
         const stock = (car.internalStockNumber || car._id || '').toString().replace(/[^a-zA-Z0-9\-_]/g, '');
-        const filename = `TRONEX-PROFORMA-${stock || 'CAR'}.pdf`;
+        const filename = `${invoice.invoiceNumber}-TRONEX-PROFORMA-${stock || 'CAR'}.pdf`;
 
-        const recipients = [
-            customer.email,
-            'tronexcarimportersltd@gmail.com',
-            'faithmaina393@gmail.com'
-        ].filter(Boolean);
+        const recipients = [...new Set([customer.email, ...getProformaInvoiceCcEmails()].filter(Boolean))];
 
-        const sendResult = await sendInvoiceEmailWithAttachment({
-            to: recipients,
-            subject: `TRONEX Invoice - ${car.make || ''} ${car.model || ''}`.trim(),
-            text: `Hello,\n\nPlease find attached the invoice for your vehicle (${car.make || ''} ${car.model || ''}).\n\nRegards,\nTRONEX Car Importers`,
-            filename,
-            pdfBuffer
-        });
+        const carLabel = `${car.make || ''} ${car.model || ''}`.trim();
+        let emailSent = false;
+        let emailError = null;
+        let sendResult = null;
+
+        try {
+            const dueStr = Number(invoice.totalCost || 0).toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+            sendResult = await sendInvoiceEmailWithAttachment({
+                to: recipients,
+                subject: `TRONEX Proforma Invoice ${invoice.invoiceNumber} - ${carLabel}`,
+                text: `Hello,\n\nPlease find attached proforma invoice ${invoice.invoiceNumber} for ${carLabel}.\nAmount due (after any selected early payment discount): KES ${dueStr}.\n\nRegards,\nTRONEX Car Importers`,
+                filename,
+                pdfBuffer
+            });
+            emailSent = true;
+        } catch (e) {
+            emailError = e && e.message ? e.message : String(e);
+            console.error('❌ [EMAIL INVOICE ERROR]:', emailError);
+        }
 
         return res.json({
             success: true,
-            message: 'Invoice emailed successfully',
+            message: emailSent
+                ? 'Proforma invoice saved and emailed successfully.'
+                : `Invoice ${invoice.invoiceNumber} saved, but email failed: ${emailError || 'Unknown error'}`,
             data: {
+                invoiceId: invoice._id,
+                invoiceNumber: invoice.invoiceNumber,
+                finalAmountDueKes: invoice.totalCost,
+                earlyPaymentDiscountAppliedKes: earlyPaymentDiscount,
                 recipients,
-                provider: 'resend',
-                emailId: sendResult?.id || null
+                email: { sent: emailSent, error: emailError },
+                provider: sendResult?.provider || null,
+                emailId: sendResult?.id || null,
+                subtotal: invoice.subtotal,
+                totalCost: invoice.totalCost
             }
         });
     } catch (error) {
@@ -886,101 +857,6 @@ router.get('/api/invoices/car/:carId', async (req, res) => {
         res.status(500).json({ 
             success: false, 
             message: 'Error fetching invoice: ' + error.message 
-        });
-    }
-});
-
-// ============================================
-// UPDATE INVOICE - Admin updates invoice details
-// ============================================
-router.put('/api/admin/invoices/:invoiceId', authenticateToken, async (req, res) => {
-    try {
-        console.log('✏️ [UPDATE INVOICE] Updating invoice:', req.params.invoiceId);
-        
-        const { invoiceItems, bankDetails, mpesaDetails, expiryDate, claimClause, status, notes } = req.body;
-
-        const invoice = await resolveInvoiceByAnyId(req.params.invoiceId);
-        if (!invoice) {
-            console.error('❌ [UPDATE INVOICE] Invoice not found:', req.params.invoiceId);
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Invoice not found' 
-            });
-        }
-
-        // Update fields
-        if (invoiceItems !== undefined) {
-            invoice.invoiceItems = invoiceItems;
-            console.log('📝 [UPDATE INVOICE] Items updated:', invoiceItems.length);
-        }
-        if (bankDetails !== undefined) {
-            invoice.bankDetails = bankDetails;
-            console.log('🏦 [UPDATE INVOICE] Bank details updated');
-        }
-        if (mpesaDetails !== undefined) {
-            invoice.mpesaDetails = mpesaDetails;
-            console.log('📱 [UPDATE INVOICE] M-Pesa details updated');
-        }
-        if (expiryDate) {
-            invoice.expiryDate = new Date(expiryDate);
-            console.log('📅 [UPDATE INVOICE] Expiry date updated:', expiryDate);
-        }
-        if (claimClause !== undefined) {
-            invoice.claimClause = claimClause;
-            console.log('📄 [UPDATE INVOICE] Claim clause updated');
-        }
-        if (status) {
-            invoice.status = status;
-            console.log('🔄 [UPDATE INVOICE] Status updated:', status);
-        }
-        if (notes !== undefined) {
-            invoice.notes = notes;
-        }
-
-        invoice.updatedBy = req.user.id;
-
-        await invoice.save();
-        console.log('✅ [UPDATE INVOICE] Invoice updated successfully');
-
-        res.json({ 
-            success: true, 
-            message: 'Invoice updated successfully',
-            data: invoice 
-        });
-    } catch (error) {
-        console.error('❌ [UPDATE INVOICE ERROR]:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error updating invoice: ' + error.message 
-        });
-    }
-});
-
-// ============================================
-// GET ALL INVOICES - Admin gets all invoices
-// ============================================
-router.get('/api/admin/invoices', authenticateToken, async (req, res) => {
-    try {
-        console.log('📊 [GET ALL INVOICES] Fetching all invoices');
-        
-        const invoices = await Invoice.find()
-            .populate('carId')
-            .populate('customerId')
-            .populate('createdBy', 'firstName lastName email')
-            .sort({ createdAt: -1 });
-
-        console.log('✅ [GET ALL INVOICES] Retrieved', invoices.length, 'invoices');
-
-        res.json({ 
-            success: true, 
-            count: invoices.length,
-            data: invoices 
-        });
-    } catch (error) {
-        console.error('❌ [GET ALL INVOICES ERROR]:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error fetching invoices: ' + error.message 
         });
     }
 });
@@ -1077,47 +953,6 @@ router.put('/api/invoices/:invoiceId/link-customer', authenticateToken, async (r
         res.status(500).json({ 
             success: false, 
             message: 'Error linking customer: ' + error.message 
-        });
-    }
-});
-
-// ============================================
-// DELETE INVOICE - Admin deletes draft invoice
-// ============================================
-router.delete('/api/admin/invoices/:invoiceId', authenticateToken, async (req, res) => {
-    try {
-        console.log('🗑️ [DELETE INVOICE] Deleting invoice:', req.params.invoiceId);
-        
-        const invoice = await Invoice.findById(req.params.invoiceId);
-        if (!invoice) {
-            console.error('❌ [DELETE INVOICE] Invoice not found:', req.params.invoiceId);
-            return res.status(404).json({ 
-                success: false, 
-                message: 'Invoice not found' 
-            });
-        }
-
-        // Only allow deleting draft invoices
-        if (invoice.status !== 'Draft') {
-            console.warn('⚠️ [DELETE INVOICE] Cannot delete non-draft invoice');
-            return res.status(400).json({ 
-                success: false, 
-                message: 'Only draft invoices can be deleted' 
-            });
-        }
-
-        await Invoice.findByIdAndDelete(req.params.invoiceId);
-        console.log('✅ [DELETE INVOICE] Invoice deleted successfully');
-
-        res.json({ 
-            success: true, 
-            message: 'Invoice deleted successfully' 
-        });
-    } catch (error) {
-        console.error('❌ [DELETE INVOICE ERROR]:', error);
-        res.status(500).json({ 
-            success: false, 
-            message: 'Error deleting invoice: ' + error.message 
         });
     }
 });

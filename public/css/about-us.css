@@ -24,9 +24,9 @@ body {
 }
 
 .nav-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 1rem 2rem;
+    max-width: none;
+    margin: 0;
+    padding: 0.9rem 1rem;
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -36,13 +36,15 @@ body {
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    font-size: 1.8rem;
+    font-size: 1.1rem;
     font-weight: bold;
     color: #2563eb;
 }
 
-.logo i {
-    font-size: 2rem;
+.logo-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
 }
 
 .nav-links {

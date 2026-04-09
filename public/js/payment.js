@@ -58,7 +58,7 @@ async function generateInvoiceToEmail(carId) {
       return;
     }
 
-    const earlyPaymentDiscount = getSelectedEarlyDiscount();
+    const earlyPaymentDiscount = Number(getSelectedEarlyDiscount()) || 0;
 
     const res = await fetch(`/api/cars/${encodeURIComponent(carId)}/invoice/email`, {
       method: 'POST',
@@ -76,7 +76,15 @@ async function generateInvoiceToEmail(carId) {
       return;
     }
 
-    if (msgEl) msgEl.textContent = 'Pro-forma invoice generated and emailed successfully.';
+    const invNo = data.data?.invoiceNumber;
+    const emailed = data.data?.email?.sent !== false;
+    const due = data.data?.finalAmountDueKes ?? data.data?.totalCost;
+    const dueTxt = due != null ? ` Amount due: KES ${formatMoneyAmount(due)}.` : '';
+    if (msgEl) {
+      msgEl.textContent = invNo
+        ? `${data.message || (emailed ? 'Saved and emailed.' : 'Saved.')}${emailed ? '' : ' Check your details if email failed.'} Ref: ${invNo}.${dueTxt}`
+        : `${data.message || 'Proforma invoice processed.'}${dueTxt}`;
+    }
   } catch (err) {
     console.error('❌ [Generate invoice error]:', err);
     if (msgEl) msgEl.textContent = 'Error generating invoice. Please try again.';

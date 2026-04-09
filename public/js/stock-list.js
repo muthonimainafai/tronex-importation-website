@@ -308,7 +308,6 @@ function displayCars() {
                     ${thumbSrc
                         ? `<img src="${safeThumb}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder-car.svg'">`
                         : '<i class="fas fa-car-side"></i>'}
-                    <span class="badge">${car.badge}</span>
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="car-details">
@@ -380,7 +379,6 @@ function openCarModal(carId) {
     }
 
     document.getElementById('carImagePlaceholder').style.background = car.gradientColor;
-    document.getElementById('carBadge').textContent = car.badge || 'Featured';
     document.getElementById('carStatus').className = `status-badge ${statusClass}`;
     document.getElementById('carStatus').textContent = statusText;
 

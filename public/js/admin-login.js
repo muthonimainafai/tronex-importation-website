@@ -1,3 +1,10 @@
+function safeNextPath(raw) {
+    if (!raw || typeof raw !== 'string') return '/admin-dashboard';
+    const trimmed = raw.split('#')[0];
+    if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return '/admin-dashboard';
+    return trimmed;
+}
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -6,11 +13,9 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const successMessage = document.getElementById('successMessage');
     const button = e.target.querySelector('button');
 
-    // Clear messages
     errorMessage.style.display = 'none';
     successMessage.style.display = 'none';
 
-    // Disable button while logging in
     button.disabled = true;
     button.textContent = 'Logging in...';
 
@@ -21,27 +26,23 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             body: JSON.stringify({ password })
         });
 
-        const result = await response.json();
+        const result = await response.json().catch(() => ({}));
 
-        if (result.success) {
-            // Store auth token in localStorage with expiration
-            localStorage.setItem('adminToken', 'authenticated');
-            localStorage.setItem('adminLoginTime', new Date().getTime());
+        if (response.ok && result.success && result.token) {
+            localStorage.setItem('adminToken', result.token);
 
+            const next = safeNextPath(new URLSearchParams(window.location.search).get('next'));
             successMessage.textContent = '✅ Login successful! Redirecting...';
             successMessage.style.display = 'block';
-            
-            // Redirect after 1.5 seconds to the actual admin dashboard page
+
             setTimeout(() => {
-                window.location.href = '/admin-dashboard';
-            }, 1500);
+                window.location.href = next;
+            }, 600);
         } else {
             errorMessage.textContent = '❌ ' + (result.message || 'Invalid password');
             errorMessage.style.display = 'block';
             button.disabled = false;
             button.textContent = 'Login to Admin Panel';
-            
-            // Clear password field
             document.getElementById('password').value = '';
         }
     } catch (error) {

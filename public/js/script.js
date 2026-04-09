@@ -296,6 +296,17 @@ function renderVehiclesInStock(cars, options = {}) {
         const safeThumb = String(thumbSrc).replace(/"/g, '&quot;');
         const carName = car.name || `${car.make || ''} ${car.model || ''}`.trim();
         const safeCarName = String(carName).replace(/"/g, '&quot;');
+        const statusRaw = String(car.availability || 'Available');
+        const statusClass = statusRaw.toLowerCase() === 'reserved'
+            ? 'reserved'
+            : statusRaw.toLowerCase() === 'sold'
+                ? 'sold'
+                : 'available';
+        const statusText = statusClass === 'reserved'
+            ? 'Reserved'
+            : statusClass === 'sold'
+                ? 'Sold'
+                : 'Available';
 
         return `
             <div class="car-card" data-car-id="${car._id}">
@@ -303,7 +314,7 @@ function renderVehiclesInStock(cars, options = {}) {
                     ${thumbSrc
                         ? `<img src="${safeThumb}" alt="${safeCarName}" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder-car.svg'">`
                         : `<div class="car-placeholder" style="background: ${car.gradientColor || '#2d2d2d'};"><i class="fas fa-car-side"></i></div>`}
-                    <span class="car-badge-featured">${car.badge || 'In Stock'}</span>
+                    <span class="car-status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="car-details">
                     <div class="car-title-price">

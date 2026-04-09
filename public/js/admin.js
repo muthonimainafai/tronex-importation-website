@@ -110,9 +110,8 @@ function navigateToSection(section) {
 // Handle logout
 function handleLogout() {
     console.log('🚪 Logging out...');
-    // Clear session/storage if needed
+    localStorage.removeItem('adminToken');
     sessionStorage.clear();
-    // Redirect to login
     window.location.href = '/admin-login';
 }
 

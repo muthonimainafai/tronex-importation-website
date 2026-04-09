@@ -7,6 +7,30 @@ let carToDelete = null;
 let uploadedImages = [];
 let mainImageUrl = '';
 
+function getAdminToken() {
+    return localStorage.getItem('adminToken');
+}
+
+function adminAuthHeaders() {
+    const t = getAdminToken();
+    return t ? { Authorization: 'Bearer ' + t } : {};
+}
+
+function redirectToAdminLogin() {
+    localStorage.removeItem('adminToken');
+    window.location.href = '/admin-login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
+}
+
+async function adminFetch(url, options = {}) {
+    const headers = Object.assign({}, adminAuthHeaders(), options.headers || {});
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401 || res.status === 403) {
+        redirectToAdminLogin();
+        throw new Error('Admin session expired or invalid');
+    }
+    return res;
+}
+
 function normalizeLeadingLetter(value, mode = 'upper') {
     const text = String(value ?? '').replace(/^\s+/, '');
     if (!text) return '';
@@ -117,10 +141,6 @@ function setupEventListeners() {
     });
 
     // Generate invoice (from invoiceCosts) + email + show in admin invoice page
-    const btnGenerateInvoice = document.getElementById('btnGenerateInvoice');
-    if (btnGenerateInvoice) {
-        btnGenerateInvoice.addEventListener('click', generateInvoiceAndEmail);
-    }
 }
 
 function numOrNull(v) {
@@ -213,60 +233,6 @@ function recomputeInvoiceTotals() {
     if (elTotal) elTotal.value = moneyKES(total);
 }
 
-async function generateInvoiceAndEmail() {
-    const btnGenerateInvoice = document.getElementById('btnGenerateInvoice');
-    if (btnGenerateInvoice) btnGenerateInvoice.disabled = true;
-
-    try {
-        if (!currentEditId) {
-            showToast('❌ Please save/edit the vehicle first to generate an invoice.', 'error');
-            return;
-        }
-
-        // Build invoiceCosts payload from the current modal form values
-        const invoiceCosts = { currency: 'KES' };
-        INVOICE_FIELDS.forEach(f => {
-            invoiceCosts[f] = numOrNull(document.getElementById(`inv_${f}`)?.value);
-        });
-
-        const expiryDays = 30;
-        const payload = { invoiceCosts, expiryDays };
-
-        const res = await fetch(`/api/admin/cars/${encodeURIComponent(currentEditId)}/generate-invoice`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await res.json().catch(() => ({}));
-        if (!res.ok || result.success === false) {
-            throw new Error(result.message || `Failed to generate invoice (${res.status})`);
-        }
-
-        const invoice = result.data?.invoice;
-        const email = result.data?.email || {};
-        if (email.sent) {
-            showToast('✅ Invoice generated and emailed successfully.', 'success');
-        } else {
-            showToast('⚠️ Invoice created, but email was not sent: ' + (email.error || 'SMTP not configured.'), 'error');
-        }
-
-        // Close modal and open invoice builder preloaded with the new invoice
-        closeModals();
-        if (invoice?._id) {
-            window.location.href = `/admin-invoices?invoiceId=${encodeURIComponent(invoice._id)}`;
-        }
-    } catch (err) {
-        console.error('❌ [GENERATE INVOICE ERROR]:', err);
-        showToast('❌ ' + (err.message || 'Error generating invoice'), 'error');
-    } finally {
-        if (btnGenerateInvoice) btnGenerateInvoice.disabled = false;
-    }
-}
-
-
 // ==================== IMAGE UPLOAD FUNCTIONS ====================
 
 
@@ -357,6 +323,10 @@ async function uploadImages(files) {
 
         // Upload completion
         xhr.addEventListener('load', async () => {
+            if (xhr.status === 401 || xhr.status === 403) {
+                redirectToAdminLogin();
+                return;
+            }
             if (xhr.status === 200) {
                 const result = JSON.parse(xhr.responseText);
                 
@@ -402,6 +372,8 @@ async function uploadImages(files) {
         });
 
         xhr.open('POST', '/api/upload/images');
+        const adm = getAdminToken();
+        if (adm) xhr.setRequestHeader('Authorization', 'Bearer ' + adm);
         xhr.send(formData);
 
     } catch (error) {
@@ -484,7 +456,7 @@ async function deleteImage(filename) {
     try {
         console.log('🗑️ [DELETE IMAGE]:', filename);
         
-        const response = await fetch(`/api/upload/image/${filename}`, {
+        const response = await adminFetch(`/api/upload/image/${encodeURIComponent(filename)}`, {
             method: 'DELETE'
         });
 
@@ -736,7 +708,7 @@ async function addDummyData() {
     for (const car of dummyCars) {
         try {
             console.log('➕ Adding dummy car:', car.make, car.model);
-            const response = await fetch('/api/admin/cars', {
+            const response = await adminFetch('/api/admin/cars', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(car)
@@ -1019,14 +991,14 @@ async function saveCar(e) {
         let response;
         if (currentEditId) {
             console.log('🔄 [UPDATE MODE] Editing car:', currentEditId);
-            response = await fetch(`/api/admin/cars/${currentEditId}`, {
+            response = await adminFetch(`/api/admin/cars/${currentEditId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(carData)
             });
         } else {
             console.log('➕ [CREATE MODE] Adding new car');
-            response = await fetch('/api/admin/cars', {
+            response = await adminFetch('/api/admin/cars', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(carData)
@@ -1074,7 +1046,7 @@ async function confirmDelete() {
 
     try {
         console.log('🗑️ Deleting car:', carToDelete);
-        const response = await fetch(`/api/admin/cars/${carToDelete}`, {
+        const response = await adminFetch(`/api/admin/cars/${carToDelete}`, {
             method: 'DELETE'
         });
 
