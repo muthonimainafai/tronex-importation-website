@@ -11,11 +11,12 @@ final class Auth
     public static function jwtSecret(): string
     {
         $s = Config::get('JWT_SECRET');
-        if (!$s || strlen($s) < 16) {
+        // php-jwt v7+ requires sufficient key length for HS256 (use 32+ chars in production).
+        if (!$s || strlen($s) < 32) {
             if (Config::isProduction()) {
-                throw new \RuntimeException('Set JWT_SECRET in .env (at least 16 characters).');
+                throw new \RuntimeException('Set JWT_SECRET in .env (at least 32 characters).');
             }
-            return 'dev-only-insecure-jwt-secret';
+            return 'dev-only-insecure-jwt-secret-32chars!!';
         }
         return $s;
     }
