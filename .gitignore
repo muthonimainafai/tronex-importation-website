@@ -1,6 +1,7 @@
 # MongoDB data folder
 data/
 node_modules/
+vendor/
 .env
 .env.local
 

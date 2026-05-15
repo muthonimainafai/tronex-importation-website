@@ -1,0 +1,94 @@
+<?php
+$c = $customer ?? null;
+$toName = '';
+if ($c) {
+    $toName = trim($c['profile']['legalName'] ?? '');
+    if ($toName === '') {
+        $toName = trim(($c['firstName'] ?? '') . ' ' . ($c['lastName'] ?? ''));
+    }
+}
+$customerId = $c ? ($c['customerId'] ?? $c['_id'] ?? $c['id'] ?? '') : '';
+$amountDue = (float) ($invoice['totalCosts'] ?? 0);
+$formattedAmountDue = number_format($amountDue, 2);
+$mainImg = $car['mainImage'] ?? '';
+if ($mainImg === '' && !empty($car['images'][0])) {
+    $mainImg = $car['images'][0];
+}
+if ($mainImg === '') {
+    $mainImg = '/images/placeholder-car.svg';
+}
+$mileageDisplay = isset($car['mileage']) ? number_format((int) $car['mileage']) : 'N/A';
+?>
+<div id="paymentPageRoot" class="payment-details-shell" data-car-id="<?= e($car['_id']) ?>" data-currency="<?= e($invoice['currency']) ?>" data-base-total="<?= e((string) $amountDue) ?>">
+  <div class="payment-hero">
+    <div>
+      <div style="font-weight:900; color:#8b0f1a; letter-spacing:.04em;">TRONEX CAR IMPORTERS LTD</div>
+      <p>
+        Please review the amount due and vehicle summary below.
+      </p>
+    </div>
+    <div class="payment-amount">
+      <div class="label">Amount Due</div>
+      <div id="payEarlyHeroNote" class="pay-early-note" hidden>Early payment discount applied</div>
+      <div class="value"><span id="payDisplayCurrency"><?= e($invoice['currency']) ?></span> <span id="payDisplayTotal"><?= e($formattedAmountDue) ?></span></div>
+      <div style="margin-top:8px; font-size:12px; color:rgba(0,0,0,.65); font-weight:800;">
+        Stock ID: <?= e($car['internalStockNumber'] ?? 'N/A') ?>
+      </div>
+    </div>
+  </div>
+
+  <div class="payment-card payment-discount-card" style="margin-top:14px;">
+    <h3 class="payment-subtitle">Apply Discount</h3>
+    <p class="payment-discount-intro">Select at most one option. If you pay within the period shown, your total is reduced by that amount.</p>
+    <div class="payment-discount-options" role="group" aria-label="Early payment discount options">
+      <label class="discount-option">
+        <input type="checkbox" class="early-pay-check" value="30000" data-amount="30000" />
+        <span>Payment within 24hrs — KES 30,000</span>
+      </label>
+      <label class="discount-option">
+        <input type="checkbox" class="early-pay-check" value="20000" data-amount="20000" />
+        <span>Payment within 48hrs — KES 20,000</span>
+      </label>
+      <label class="discount-option">
+        <input type="checkbox" class="early-pay-check" value="10000" data-amount="10000" />
+        <span>Payment within 72hrs — KES 10,000</span>
+      </label>
+    </div>
+  </div>
+
+  <div class="generate-invoice-actions" style="margin-top:14px;">
+    <button class="btn-generate-invoice" type="button" onclick="generateInvoiceToEmail('<?= e($car['_id']) ?>')">
+      Generate Proforma Invoice
+    </button>
+    <div class="generate-invoice-msg" id="generateInvoiceMsg"></div>
+  </div>
+
+  <div class="payment-card" style="margin-top:14px;">
+    <div class="vehicle-details">
+      <div class="title">Vehicle Summary</div>
+      <div class="payment-vehicle">
+      <div class="vehicle-photo">
+        <img
+          src="<?= e($mainImg) ?>"
+          alt="<?= e($car['make'] . ' ' . $car['model']) ?>"
+          onerror="this.src='/images/placeholder-car.svg'"
+        />
+      </div>
+      <div class="vehicle-details">
+        <div class="title"><?= e($car['make'] . ' ' . $car['model']) ?></div>
+        <div class="vehicle-kv">
+          <div class="kv"><div class="k">Year</div><div class="v"><?= e((string) ($car['year'] ?? 'N/A')) ?></div></div>
+          <div class="kv"><div class="k">Body Type</div><div class="v"><?= e($car['bodyType'] ?? 'N/A') ?></div></div>
+          <div class="kv"><div class="k">Transmission</div><div class="v"><?= e($car['transmission'] ?? 'N/A') ?></div></div>
+          <div class="kv"><div class="k">Fuel Type</div><div class="v"><?= e($car['fuel'] ?? 'N/A') ?></div></div>
+          <div class="kv"><div class="k">Mileage</div><div class="v"><?= e($mileageDisplay) ?></div></div>
+          <div class="kv"><div class="k">Registration</div><div class="v"><?= e($car['registration'] ?? 'N/A') ?></div></div>
+          <div class="kv"><div class="k">Amount Due</div><div class="v"><span id="payVehicleCurrency"><?= e($invoice['currency']) ?></span> <span id="payVehicleTotal"><?= e($formattedAmountDue) ?></span></div></div>
+          <div class="kv"><div class="k">Customer</div><div class="v"><?= e($toName ?: ($customerId ?: '—')) ?></div></div>
+        </div>
+      </div>
+    </div>
+    </div>
+  </div>
+</div>
+

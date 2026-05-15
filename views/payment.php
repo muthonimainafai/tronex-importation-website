@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate, proxy-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
+  <title>Payment - <?= e($car['make'] . ' ' . $car['model']) ?> | Tronex</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/payment-details.css">
+  <style>
+    .pay-wrap{max-width:1200px;margin:28px auto;padding:0 16px}
+    .pay-back-only{margin:0 0 16px}
+    .btn-back{display:inline-flex;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid rgba(0,0,0,.12);background:#fff;text-decoration:none;color:#111;font-weight:800}
+  </style>
+</head>
+<body>
+  <div class="pay-wrap">
+    <p class="pay-back-only"><a class="btn-back" href="/car/<?= e($car['_id']) ?>">← Back to car</a></p>
+    <?php include Tronex\Config::root() . '/views/partials/tronex-payment-details.php'; ?>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/payment.js?v=20260325"></script>
+</body>
+</html>

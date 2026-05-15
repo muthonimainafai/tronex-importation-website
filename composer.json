@@ -1,0 +1,16 @@
+{
+  "name": "tronex/importation-website",
+  "description": "Tronex Car Importers — PHP + MySQL",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "firebase/php-jwt": "^6.11",
+    "phpmailer/phpmailer": "^6.9",
+    "tecnickcom/tcpdf": "^6.8"
+  },
+  "autoload": {
+    "psr-4": {
+      "Tronex\\": "includes/"
+    }
+  }
+}
