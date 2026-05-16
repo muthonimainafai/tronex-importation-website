@@ -1,6 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
+    # Pass Authorization header to PHP (required for admin API Bearer tokens on Apache)
+    RewriteCond %{HTTP:Authorization} .
+    RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
     # Static assets live under public/ (works in subdirectory installs)
     RewriteRule ^(css|js|images|uploads)(/.*)?$ public/$1$2 [L]
 

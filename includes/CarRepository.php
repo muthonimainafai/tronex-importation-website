@@ -25,7 +25,7 @@ final class CarRepository
             'make' => $row['make'],
             'model' => $row['model'],
             'year' => (int) $row['year'],
-            'price' => (float) $row['price'],
+            'price' => round((float) $row['price'], 2),
             'availability' => $row['availability'],
             'type' => $row['type'],
             'bodyType' => $row['body_type'],

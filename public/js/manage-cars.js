@@ -18,7 +18,16 @@ function adminAuthHeaders() {
 
 function redirectToAdminLogin() {
     localStorage.removeItem('adminToken');
-    window.location.href = tronexUrl('/admin-login?next=' + encodeURIComponent(window.location.pathname + window.location.search));
+    var path = window.location.pathname || '/';
+    var search = window.location.search || '';
+    var base = typeof tronexBase === 'function' ? tronexBase() : '';
+    if (base && path.indexOf(base) === 0) {
+        path = path.slice(base.length) || '/';
+    }
+    var next = path + search;
+    window.location.href = typeof tronexUrl === 'function'
+        ? tronexUrl('/admin-login?next=' + encodeURIComponent(next))
+        : (base || '') + '/admin-login?next=' + encodeURIComponent(next);
 }
 
 async function adminFetch(url, options = {}) {
@@ -29,6 +38,46 @@ async function adminFetch(url, options = {}) {
         throw new Error('Admin session expired or invalid');
     }
     return res;
+}
+
+/** Prefix root-relative asset/API paths for subdirectory installs (e.g. XAMPP). */
+function assetUrl(path) {
+    if (!path) return path;
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    return typeof tronexUrl === 'function' ? tronexUrl(path) : path;
+}
+
+function formatAmountForInput(value) {
+    if (value === null || value === undefined || value === '') return '';
+    const n = Number(value);
+    if (!Number.isFinite(n)) return '';
+    if (Number.isInteger(n) || Math.abs(n - Math.round(n)) < 1e-9) {
+        return String(Math.round(n));
+    }
+    return String(Math.round(n * 100) / 100);
+}
+
+function setupAmountInputs() {
+    document.querySelectorAll('.js-amount-input, .js-invoice-amount').forEach((el) => {
+        el.addEventListener('wheel', (e) => {
+            if (document.activeElement === el) e.preventDefault();
+        }, { passive: false });
+
+        el.addEventListener('blur', () => {
+            const n = numOrNull(el.value);
+            if (n === null) {
+                el.value = '';
+                return;
+            }
+            el.value = formatAmountForInput(n);
+        });
+    });
+
+    document.querySelectorAll('input[type="number"]').forEach((el) => {
+        el.addEventListener('wheel', (e) => {
+            if (document.activeElement === el) e.preventDefault();
+        }, { passive: false });
+    });
 }
 
 function normalizeLeadingLetter(value, mode = 'upper') {
@@ -134,10 +183,15 @@ function setupEventListeners() {
         });
     }
 
-    // Invoice cost live totals
+    setupAmountInputs();
+
+    // Invoice cost live totals (read-only; never write back into amount fields)
     INVOICE_FIELDS.forEach(f => {
         const el = document.getElementById(`inv_${f}`);
-        if (el) el.addEventListener('input', recomputeInvoiceTotals);
+        if (el) {
+            el.addEventListener('input', recomputeInvoiceTotals);
+            el.addEventListener('change', recomputeInvoiceTotals);
+        }
     });
 
     // Generate invoice (from invoiceCosts) + email + show in admin invoice page
@@ -244,8 +298,12 @@ function initImageUpload() {
 
     if (!imageUpload || !uploadWrapper) return;
 
-    // Click to upload
-    uploadWrapper.addEventListener('click', () => imageUpload.click());
+    // Click to upload (ignore bubbled clicks from the hidden file input)
+    uploadWrapper.addEventListener('click', (e) => {
+        if (e.target === imageUpload) return;
+        imageUpload.click();
+    });
+    imageUpload.addEventListener('click', (e) => e.stopPropagation());
 
     // File selection
     imageUpload.addEventListener('change', handleImageSelect);
@@ -283,19 +341,17 @@ function handleImageSelect(e) {
 }
 
 async function uploadImages(files) {
-    if (files.length === 0) return;
+    if (!files || files.length === 0) return;
 
     console.log('📸 [IMAGE UPLOAD] Starting upload of', files.length, 'files');
 
-    // Check if adding more images exceeds limit
     if (uploadedImages.length + files.length > 10) {
         showToast('❌ Maximum 10 images allowed! Current: ' + uploadedImages.length, 'error');
         return;
     }
 
     const formData = new FormData();
-    
-    for (let file of files) {
+    for (const file of files) {
         formData.append('images', file);
     }
 
@@ -303,84 +359,51 @@ async function uploadImages(files) {
     const progressFill = document.querySelector('.progress-fill');
     const uploadStatus = document.getElementById('uploadStatus');
 
-    if (progressDiv) {
-        progressDiv.classList.add('active');
-        progressFill.style.width = '0%';
-        uploadStatus.textContent = 'Uploading...';
-    }
+    if (progressDiv) progressDiv.classList.add('active');
+    if (progressFill) progressFill.style.width = '30%';
+    if (uploadStatus) uploadStatus.textContent = 'Uploading...';
 
     try {
-        const xhr = new XMLHttpRequest();
-
-        // Progress tracking
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable && progressFill) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                progressFill.style.width = percentComplete + '%';
-                uploadStatus.textContent = Math.round(percentComplete) + '% uploaded';
-            }
+        const response = await adminFetch('/api/upload/images', {
+            method: 'POST',
+            body: formData
         });
 
-        // Upload completion
-        xhr.addEventListener('load', async () => {
-            if (xhr.status === 401 || xhr.status === 403) {
-                redirectToAdminLogin();
-                return;
-            }
-            if (xhr.status === 200) {
-                const result = JSON.parse(xhr.responseText);
-                
-                if (result.success) {
-                    console.log('✅ [UPLOAD SUCCESS]:', result.data);
-                    
-                    // Add to uploaded images
-                    uploadedImages.push(...result.data);
-                    
-                    // Refresh preview
-                    displayImagePreviews();
-                    updateMainImageSelect();
-                    
-                    // Store in hidden field
-                    saveImageData();
-                    
-                    showToast('✅ ' + result.data.length + ' image(s) uploaded successfully!', 'success');
-                    uploadStatus.textContent = 'Upload complete!';
-                } else {
-                    showToast('❌ Upload failed: ' + result.message, 'error');
-                    uploadStatus.textContent = 'Upload failed!';
-                }
-            } else {
-                showToast('❌ Upload error: ' + xhr.statusText, 'error');
-                uploadStatus.textContent = 'Upload error!';
-            }
-            
-            if (progressDiv) {
-                setTimeout(() => {
-                    progressDiv.classList.remove('active');
-                    progressFill.style.width = '0%';
-                }, 2000);
-            }
-            document.getElementById('imageUpload').value = '';
-        });
+        let result = {};
+        try {
+            result = await response.json();
+        } catch (parseErr) {
+            console.error('Upload response parse error:', parseErr);
+        }
 
-        xhr.addEventListener('error', () => {
-            showToast('❌ Upload error: Network failure', 'error');
-            uploadStatus.textContent = 'Network error!';
-            if (progressDiv) {
-                progressDiv.classList.remove('active');
+        if (response.ok && result.success && Array.isArray(result.data)) {
+            uploadedImages.push(...result.data);
+            if (!mainImageUrl && result.data[0]?.url) {
+                mainImageUrl = result.data[0].url;
             }
-        });
-
-        xhr.open('POST', '/api/upload/images');
-        const adm = getAdminToken();
-        if (adm) xhr.setRequestHeader('Authorization', 'Bearer ' + adm);
-        xhr.send(formData);
-
+            displayImagePreviews();
+            updateMainImageSelect();
+            saveImageData();
+            showToast('✅ ' + result.data.length + ' image(s) uploaded successfully!', 'success');
+            if (uploadStatus) uploadStatus.textContent = 'Upload complete!';
+            if (progressFill) progressFill.style.width = '100%';
+        } else {
+            const msg = result.message || ('Upload failed (' + response.status + ')');
+            showToast('❌ ' + msg, 'error');
+            if (uploadStatus) uploadStatus.textContent = 'Upload failed!';
+        }
     } catch (error) {
         console.error('❌ Upload error:', error);
         showToast('❌ Error uploading images: ' + error.message, 'error');
+        if (uploadStatus) uploadStatus.textContent = 'Network error!';
+    } finally {
+        const imageUpload = document.getElementById('imageUpload');
+        if (imageUpload) imageUpload.value = '';
         if (progressDiv) {
-            progressDiv.classList.remove('active');
+            setTimeout(() => {
+                progressDiv.classList.remove('active');
+                if (progressFill) progressFill.style.width = '0%';
+            }, 2000);
         }
     }
 }
@@ -391,7 +414,7 @@ function displayImagePreviews() {
     
     if (!container) return;
 
-    imageCount.textContent = uploadedImages.length;
+    if (imageCount) imageCount.textContent = uploadedImages.length;
 
     if (uploadedImages.length === 0) {
         container.innerHTML = '<div class="image-preview-empty"><i class="fas fa-images"></i>No images uploaded yet</div>';
@@ -400,7 +423,7 @@ function displayImagePreviews() {
 
     container.innerHTML = uploadedImages.map((img, index) => `
         <div class="image-preview-item ${img.url === mainImageUrl ? 'main-image' : ''}">
-            <img src="${img.url}" alt="Car image ${index + 1}" onerror="this.src='/images/placeholder-car.svg'">
+            <img src="${assetUrl(img.url)}" alt="Car image ${index + 1}" onerror="this.src='${assetUrl('/images/placeholder-car.svg')}'">
             <div class="image-preview-overlay">
                 <div class="image-preview-actions">
                     <button type="button" class="btn-set-main" title="Set as main image" onclick="setMainImage('${img.url}')">
@@ -537,197 +560,12 @@ async function loadCars() {
             filteredCars = [...allCars];
             displayCars();
             updateStats();
-            
-            // ONLY add dummy data if NO cars exist after loading
-            if (allCars.length === 0) {
-                console.log('📊 No cars found, adding dummy data...');
-                await addDummyData();
-            }
         }
     } catch (error) {
         console.error('❌ Error loading cars:', error);
         showToast('Error loading cars', 'error');
     }
 }
-
-// Add dummy data (only if no cars exist)
-async function addDummyData() {
-    const dummyCars = [
-        {
-            make: 'Toyota',
-            model: 'Camry Hybrid',
-            year: 2024,
-            price: 28500,
-            type: 'Sedan',
-            mileage: 15000,
-            transmission: 'Automatic',
-            color: 'Silver',
-            fuel: 'Hybrid',
-            drive: '2WD',
-            engineCapacity: '2.5L',
-            badge: 'New Arrival',
-            availability: 'Available',
-            description: 'Premium hybrid sedan with excellent fuel efficiency and modern technology.',
-            externalStockNumber: 'TYT-2024-001',
-            interiorColor: 'Gray',
-            doors: 4,
-            seats: 5,
-            trunk: '450L',
-            registration: 'Registered 2024',
-            bodyType: 'Sedan',
-            highlights: ['Fuel Efficient', 'Advanced Safety', 'Eco-Friendly'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Electronic Windows', 'Cruise Control']
-        },
-        {
-            make: 'Honda',
-            model: 'CR-V SUV',
-            year: 2023,
-            price: 32000,
-            type: 'SUV',
-            mileage: 35000,
-            transmission: 'Automatic',
-            color: 'Black',
-            fuel: 'Petrol',
-            drive: 'AWD',
-            engineCapacity: '1.5L',
-            badge: 'Featured',
-            availability: 'Available',
-            description: 'Spacious SUV perfect for families with great safety features.',
-            externalStockNumber: 'HON-2023-001',
-            interiorColor: 'Black Leather',
-            doors: 4,
-            seats: 5,
-            trunk: '520L',
-            registration: 'Registered 2023',
-            bodyType: 'Crossover SUV',
-            highlights: ['Spacious', 'Family-Friendly', 'Advanced Safety'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Leather Seats', 'Sunroof']
-        },
-        {
-            make: 'Ford',
-            model: 'F-150 Pickup',
-            year: 2023,
-            price: 38000,
-            type: 'Truck',
-            mileage: 45000,
-            transmission: 'Automatic',
-            color: 'Red',
-            fuel: 'Diesel',
-            drive: '4WD',
-            engineCapacity: '3.0L',
-            badge: 'Hot Deal',
-            availability: 'Reserved',
-            description: 'Powerful pickup truck with towing capacity and comfortable cabin.',
-            externalStockNumber: 'FRD-2023-001',
-            interiorColor: 'Gray',
-            doors: 4,
-            seats: 5,
-            trunk: '1500L',
-            registration: 'Registered 2023',
-            bodyType: 'Pickup Truck',
-            highlights: ['Powerful', 'High Towing Capacity', 'Durable'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Electronic Windows', 'Traction Control']
-        },
-        {
-            make: 'BMW',
-            model: '3 Series',
-            year: 2022,
-            price: 35000,
-            type: 'Sedan',
-            mileage: 55000,
-            transmission: 'Automatic',
-            color: 'White',
-            fuel: 'Petrol',
-            drive: '2WD',
-            engineCapacity: '2.0L',
-            badge: 'Featured',
-            availability: 'Available',
-            description: 'Luxury sedan with premium features and smooth performance.',
-            externalStockNumber: 'BMW-2022-001',
-            interiorColor: 'Beige Leather',
-            doors: 4,
-            seats: 5,
-            trunk: '480L',
-            registration: 'Registered 2022',
-            bodyType: 'Luxury Sedan',
-            highlights: ['Luxury', 'Premium Features', 'Smooth Performance'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Leather Seats', 'Sunroof', 'Navigation System']
-        },
-        {
-            make: 'Mazda',
-            model: 'CX-5',
-            year: 2024,
-            price: 30000,
-            type: 'SUV',
-            mileage: 12000,
-            transmission: 'Automatic',
-            color: 'Blue',
-            fuel: 'Petrol',
-            drive: 'AWD',
-            engineCapacity: '2.5L',
-            badge: 'New Arrival',
-            availability: 'Sold',
-            description: 'Modern SUV with agile handling and advanced safety systems.',
-            externalStockNumber: 'MZD-2024-001',
-            interiorColor: 'Black',
-            doors: 4,
-            seats: 5,
-            trunk: '500L',
-            registration: 'Registered 2024',
-            bodyType: 'Crossover SUV',
-            highlights: ['Modern Design', 'Advanced Safety', 'Agile Handling'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Electronic Windows', 'Stability Control']
-        },
-        {
-            make: 'Nissan',
-            model: 'Altima',
-            year: 2023,
-            price: 26000,
-            type: 'Sedan',
-            mileage: 28000,
-            transmission: 'Automatic',
-            color: 'Gray',
-            fuel: 'Petrol',
-            drive: '2WD',
-            engineCapacity: '1.8L',
-            badge: 'Featured',
-            availability: 'Available',
-            description: 'Reliable sedan with smooth ride and good fuel economy.',
-            externalStockNumber: 'NIS-2023-001',
-            interiorColor: 'Gray',
-            doors: 4,
-            seats: 5,
-            trunk: '420L',
-            registration: 'Registered 2023',
-            bodyType: 'Mid-Size Sedan',
-            highlights: ['Reliable', 'Good Fuel Economy', 'Smooth Ride'],
-            features: ['Air Conditioning', 'Power Steering', 'ABS', 'Electronic Windows', 'Cruise Control']
-        }
-    ];
-
-    for (const car of dummyCars) {
-        try {
-            console.log('➕ Adding dummy car:', car.make, car.model);
-            const response = await adminFetch('/api/admin/cars', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(car)
-            });
-            const result = await response.json();
-            if (result.success) {
-                console.log('✅ Dummy car added:', result.data._id);
-            } else {
-                console.error('❌ Failed to add dummy car:', result.message);
-            }
-        } catch (error) {
-            console.error('❌ Error adding dummy car:', error);
-        }
-    }
-
-    await loadCars();
-    showToast('Sample vehicles loaded', 'success');
-}
-
 
 // Display cars in table
 function displayCars() {
@@ -856,7 +694,7 @@ function openEditModal(carId) {
     document.getElementById('make').value = car.make || '';
     document.getElementById('model').value = car.model || '';
     document.getElementById('year').value = car.year || '';
-    document.getElementById('price').value = car.price || '';
+    document.getElementById('price').value = formatAmountForInput(car.price);
     document.getElementById('mileage').value = car.mileage || '';
     document.getElementById('type').value = car.type || '';
     document.getElementById('transmission').value = car.transmission || '';
@@ -884,7 +722,7 @@ function openEditModal(carId) {
         const el = document.getElementById(`inv_${f}`);
         if (!el) return;
         const v = inv[f];
-        el.value = (v === null || v === undefined) ? '' : v;
+        el.value = (v === null || v === undefined) ? '' : formatAmountForInput(v);
     });
     recomputeInvoiceTotals();
 

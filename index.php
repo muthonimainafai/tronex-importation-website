@@ -84,6 +84,11 @@ try {
         json_response(['success' => true, 'message' => 'Login successful', 'token' => Auth::signAdminPanelToken()]);
     }
 
+    if ($method === 'GET' && $path === '/api/admin/session') {
+        Auth::requireAdminJson();
+        json_response(['success' => true, 'authenticated' => true]);
+    }
+
     // ---------- API: Auth ----------
     if ($method === 'POST' && $path === '/api/auth/register') {
         $body = read_json_body();
