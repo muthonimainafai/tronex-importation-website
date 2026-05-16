@@ -36,7 +36,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             successMessage.style.display = 'block';
 
             setTimeout(() => {
-                window.location.href = next;
+                window.location.href = tronexUrl(next);
             }, 600);
         } else {
             errorMessage.textContent = '❌ ' + (result.message || 'Invalid password');

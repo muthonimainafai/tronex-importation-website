@@ -18,7 +18,7 @@ function adminAuthHeaders() {
 
 function redirectToAdminLogin() {
     localStorage.removeItem('adminToken');
-    window.location.href = '/admin-login?next=' + encodeURIComponent(window.location.pathname + window.location.search);
+    window.location.href = tronexUrl('/admin-login?next=' + encodeURIComponent(window.location.pathname + window.location.search));
 }
 
 async function adminFetch(url, options = {}) {

@@ -1,13 +1,10 @@
 <IfModule mod_rewrite.c>
     RewriteEngine On
-    RewriteBase /
 
-    # Serve static assets from /public when the file exists there
-    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -f [OR]
-    RewriteCond %{DOCUMENT_ROOT}/public%{REQUEST_URI} -d
-    RewriteRule ^(.*)$ public/$1 [L]
+    # Static assets live under public/ (works in subdirectory installs)
+    RewriteRule ^(css|js|images|uploads)(/.*)?$ public/$1$2 [L]
 
-    # Route everything else through the PHP front controller
+    # PHP front controller
     RewriteCond %{REQUEST_FILENAME} !-f
     RewriteCond %{REQUEST_FILENAME} !-d
     RewriteRule ^ index.php [L,QSA]

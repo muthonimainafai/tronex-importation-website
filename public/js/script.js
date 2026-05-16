@@ -29,7 +29,7 @@ function updateAuthNav() {
                 document.cookie = 'tronex_token=; Max-Age=0; Path=/; SameSite=Lax';
             } catch (_) {}
             updateAuthNav();
-            window.location.href = '/';
+            window.location.href = tronexUrl('/');
         };
     }
 }
@@ -49,7 +49,7 @@ function setupCarsGridListeners() {
             const carCard = detailsBtn.closest('.car-card');
             const carId = carCard ? carCard.getAttribute('data-car-id') : '';
             if (carId) {
-                window.location.href = `/car/${carId}`;
+                window.location.href = tronexUrl(`/car/${carId}`);
             }
         }
     });

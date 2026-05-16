@@ -29,8 +29,8 @@ function preserveNextOnAuthSwitchLinks() {
   if (!q) return;
   const reg = document.getElementById('linkToRegister');
   const log = document.getElementById('linkToLogin');
-  if (reg) reg.setAttribute('href', `/register${q}`);
-  if (log) log.setAttribute('href', `/login${q}`);
+  if (reg) reg.setAttribute('href', tronexUrl(`/register${q}`));
+  if (log) log.setAttribute('href', tronexUrl(`/login${q}`));
 }
 
 function saveSession(token, user) {
@@ -80,7 +80,7 @@ async function registerFlow(e) {
     setMsg('Registration successful. Redirecting…', 'success');
     setTimeout(() => {
       const dest = getPostAuthRedirectUrl() || '/my-profile';
-      window.location.href = dest;
+      window.location.href = tronexUrl(dest);
     }, 600);
   } catch (err) {
     setMsg(err.message || 'Registration failed', 'error');
@@ -124,7 +124,7 @@ async function loginFlow(e) {
     setMsg('Login successful. Redirecting…', 'success');
     setTimeout(() => {
       const dest = getPostAuthRedirectUrl() || '/';
-      window.location.href = dest;
+      window.location.href = tronexUrl(dest);
     }, 500);
   } catch (err) {
     setMsg(err.message || 'Login failed', 'error');

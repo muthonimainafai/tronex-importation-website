@@ -32,7 +32,7 @@ function updateAuthNav() {
                 document.cookie = 'tronex_token=; Max-Age=0; Path=/; SameSite=Lax';
             } catch (_) {}
             updateAuthNav();
-            window.location.href = '/';
+            window.location.href = tronexUrl('/');
         };
     }
 }
@@ -437,7 +437,7 @@ function openFullDetails() {
 // View car details in full page
 function viewCarDetails(carId) {
     console.log('👁️ Viewing car details:', carId);
-    window.location.href = `/car/${carId}`;
+    window.location.href = tronexUrl(`/car/${carId}`);
 }
 
 // Close modal when pressing Escape key

@@ -117,13 +117,13 @@ final class Auth
         $token = self::getBearerToken();
         if (!$token) {
             $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-            header('Location: /login?next=' . $next);
+            header('Location: ' . url_path('/login?next=' . $next));
             exit;
         }
         $decoded = self::decodeToken($token);
         if (!$decoded || ($decoded['role'] ?? '') !== 'customer') {
             $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-            header('Location: /login?next=' . $next);
+            header('Location: ' . url_path('/login?next=' . $next));
             exit;
         }
         return $decoded;
@@ -134,13 +134,13 @@ final class Auth
         $token = self::getBearerToken();
         if (!$token) {
             $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-            header('Location: /login?next=' . $next);
+            header('Location: ' . url_path('/login?next=' . $next));
             exit;
         }
         $decoded = self::decodeToken($token);
         if (!$decoded) {
             $next = urlencode($_SERVER['REQUEST_URI'] ?? '/');
-            header('Location: /login?next=' . $next);
+            header('Location: ' . url_path('/login?next=' . $next));
             exit;
         }
         return $decoded;

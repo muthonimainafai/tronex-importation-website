@@ -24,15 +24,84 @@ function read_json_body(): array
     return is_array($decoded) ? $decoded : [];
 }
 
+/**
+ * Subdirectory prefix when app is not at domain root (e.g. /tronex-importation-website).
+ * Empty string when served at root (production) or via virtual host at /.
+ */
+function app_base_path(): string
+{
+    static $cached = null;
+    if ($cached !== null) {
+        return $cached;
+    }
+
+    $fromEnv = \Tronex\Config::get('APP_BASE_PATH');
+    if ($fromEnv !== null && $fromEnv !== '') {
+        $cached = '/' . trim($fromEnv, '/');
+        if ($cached === '/') {
+            $cached = '';
+        }
+        return $cached;
+    }
+
+    $script = $_SERVER['SCRIPT_NAME'] ?? '';
+    $dir = str_replace('\\', '/', dirname($script));
+    if ($dir === '/' || $dir === '.' || $dir === '') {
+        $cached = '';
+    } else {
+        $cached = $dir;
+    }
+    return $cached;
+}
+
+/** Build an app URL path (always starts with /, includes subdirectory prefix). */
+function url_path(string $path): string
+{
+    $path = '/' . ltrim($path, '/');
+    $base = app_base_path();
+    if ($base === '') {
+        return $path;
+    }
+    return $base . $path;
+}
+
 function request_path(): string
 {
     $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
     $path = $uri !== false ? $uri : '/';
-    $base = rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? ''), '/\\');
-    if ($base !== '' && $base !== '/' && str_starts_with($path, $base)) {
+    $base = app_base_path();
+    if ($base !== '' && str_starts_with($path, $base)) {
         $path = substr($path, strlen($base)) ?: '/';
     }
     return $path === '' ? '/' : $path;
+}
+
+/** Rewrite root-absolute href/src/action in HTML for subdirectory installs. */
+function apply_app_base_to_html(string $html): string
+{
+    $base = app_base_path();
+    if ($base === '') {
+        return $html;
+    }
+    $prefix = rtrim($base, '/') . '/';
+    return preg_replace(
+        '#\b(href|src|action)=(["\'])/(?!/)#',
+        '$1=$2' . $prefix,
+        $html
+    ) ?? $html;
+}
+
+function inject_tronex_head_assets(string $html): string
+{
+    $base = app_base_path();
+    $meta = '<meta name="tronex-base" content="' . e($base) . '">';
+    $script = '<script src="' . e(url_path('/js/tronex-base.js')) . '"></script>';
+    $inject = $meta . $script;
+
+    if (preg_match('/<head[^>]*>/i', $html)) {
+        return preg_replace('/<head[^>]*>/i', '$0' . $inject, $html, 1) ?? $html;
+    }
+    return $inject . $html;
 }
 
 function request_method(): string

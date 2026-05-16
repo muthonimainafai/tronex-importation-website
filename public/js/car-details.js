@@ -23,10 +23,10 @@ function buyNow(carId) {
     const ts = Date.now(); // cache-bust payment page HTML
     if (!token) {
         const next = `/payment-details/${encodeURIComponent(carId)}?ts=${ts}`;
-        window.location.replace('/login?next=' + encodeURIComponent(next));
+        window.location.replace(tronexUrl('/login?next=' + encodeURIComponent(next)));
         return;
     }
-    window.location.replace(`/payment-details/${encodeURIComponent(carId)}?ts=${ts}`);
+    window.location.replace(tronexUrl(`/payment-details/${encodeURIComponent(carId)}?ts=${ts}`));
 }
 
 // Navigate to previous image

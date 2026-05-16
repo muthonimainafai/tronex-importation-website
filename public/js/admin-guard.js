@@ -8,7 +8,7 @@
 
     function redirectToLogin() {
         localStorage.removeItem('adminToken');
-        window.location.replace('/admin-login?next=' + encodeURIComponent(path + qs));
+        window.location.replace(tronexUrl('/admin-login?next=' + encodeURIComponent(path + qs)));
     }
 
     if (!token || token === 'authenticated') {

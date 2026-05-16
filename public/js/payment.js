@@ -54,7 +54,7 @@ async function generateInvoiceToEmail(carId) {
     const token = localStorage.getItem('tronex_token');
     if (!token) {
       if (msgEl) msgEl.textContent = 'Please login to generate the invoice.';
-      window.location.href = '/login?next=' + encodeURIComponent(`/payment-details/${encodeURIComponent(carId)}`);
+      window.location.href = tronexUrl('/login?next=' + encodeURIComponent(`/payment-details/${encodeURIComponent(carId)}`));
       return;
     }
 

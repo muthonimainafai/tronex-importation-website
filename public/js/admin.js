@@ -112,7 +112,7 @@ function handleLogout() {
     console.log('🚪 Logging out...');
     localStorage.removeItem('adminToken');
     sessionStorage.clear();
-    window.location.href = '/admin-login';
+    window.location.href = tronexUrl('/admin-login');
 }
 
 // Refresh dashboard stats periodically (every 30 seconds)

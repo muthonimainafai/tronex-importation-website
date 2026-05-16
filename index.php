@@ -414,7 +414,7 @@ try {
     }
 
     if ($path === '/admin') {
-        header('Location: /admin-login', true, 302);
+        header('Location: ' . url_path('/admin-login'), true, 302);
         exit;
     }
 
@@ -470,7 +470,7 @@ try {
 
     if (preg_match('#^/payment/(\d+)$#', $path, $m)) {
         $qs = $_SERVER['QUERY_STRING'] ?? '';
-        header('Location: /payment-details/' . $m[1] . ($qs ? '?' . $qs : ''), true, 302);
+        header('Location: ' . url_path('/payment-details/' . $m[1] . ($qs ? '?' . $qs : '')), true, 302);
         exit;
     }
 
