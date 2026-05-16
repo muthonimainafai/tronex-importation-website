@@ -20,7 +20,7 @@ function render_view(string $name, array $vars = []): void
     include $path;
     $html = ob_get_clean();
     header('Content-Type: text/html; charset=utf-8');
-    echo apply_app_base_to_html(inject_tronex_head_assets($html));
+    echo inject_tronex_head_assets(apply_app_base_to_html($html));
 }
 
 function render_static_view(string $name): void
@@ -38,5 +38,5 @@ function render_static_view(string $name): void
     }
     header('Content-Type: text/html; charset=utf-8');
     $html = file_get_contents($path);
-    echo apply_app_base_to_html(inject_tronex_head_assets($html ?: ''));
+    echo inject_tronex_head_assets(apply_app_base_to_html($html ?: ''));
 }

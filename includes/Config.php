@@ -34,11 +34,17 @@ final class Config
 
     public static function get(string $key, ?string $default = null): ?string
     {
+        // Prefer values from the project .env file (what you edit locally).
+        if (array_key_exists($key, self::$env)) {
+            $fromFile = self::$env[$key];
+            return $fromFile !== '' ? $fromFile : $default;
+        }
+
         $v = $_ENV[$key] ?? getenv($key);
         if ($v !== false && $v !== '') {
             return (string) $v;
         }
-        return self::$env[$key] ?? $default;
+        return $default;
     }
 
     public static function root(): string
