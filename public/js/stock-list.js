@@ -57,6 +57,18 @@ function formatKsh(value) {
     return `KSH ${toNumericValue(value).toLocaleString()}`;
 }
 
+/** Root-relative paths need the app base on subdirectory installs (e.g. XAMPP). */
+function assetUrl(path) {
+    if (!path) return '';
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    return typeof tronexUrl === 'function' ? tronexUrl(path) : path;
+}
+
+function getCarImageUrl(car) {
+    const raw = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
+    return assetUrl(raw);
+}
+
 function getInvoiceTotalFromCosts(invoiceCosts) {
     if (!invoiceCosts || typeof invoiceCosts !== 'object') return null;
 
@@ -299,14 +311,16 @@ function displayCars() {
             statusText = '✕ Sold';
         }
 
-        const thumbSrc = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
+        const thumbSrc = getCarImageUrl(car);
+        const placeholder = assetUrl('/images/placeholder-car.svg');
         const safeThumb = String(thumbSrc).replace(/"/g, '&quot;');
+        const safePlaceholder = String(placeholder).replace(/"/g, '&quot;');
 
         return `
             <div class="car-card">
                 <div class="car-image-container" style="background: ${car.gradientColor}">
                     ${thumbSrc
-                        ? `<img src="${safeThumb}" alt="" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder-car.svg'">`
+                        ? `<img src="${safeThumb}" alt="" loading="lazy" onerror="this.onerror=null;this.src='${safePlaceholder}'">`
                         : '<i class="fas fa-car-side"></i>'}
                     <span class="status-badge ${statusClass}">${statusText}</span>
                 </div>
@@ -370,11 +384,13 @@ function openCarModal(carId) {
     // Set image
     const modalImage = document.getElementById('modalCarImage');
     if (modalImage) {
-        modalImage.src = car.mainImage || car.images?.[0] || '';
-        modalImage.style.display = 'block';
+        const modalSrc = getCarImageUrl(car);
+        modalImage.src = modalSrc || assetUrl('/images/placeholder-car.svg');
+        modalImage.style.display = modalSrc ? 'block' : 'none';
         modalImage.onerror = function() {
-            this.style.display = 'none';
-            document.getElementById('carImagePlaceholder').style.background = car.gradientColor;
+            this.onerror = null;
+            this.src = assetUrl('/images/placeholder-car.svg');
+            this.style.display = 'block';
         };
     }
 
