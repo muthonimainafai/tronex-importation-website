@@ -20,7 +20,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     button.textContent = 'Logging in...';
 
     try {
-        const response = await fetch(typeof tronexUrl === 'function' ? tronexUrl('/api/admin/login') : '/api/admin/login', {
+        const response = await fetch('/api/admin/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ password })

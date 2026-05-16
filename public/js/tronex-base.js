@@ -16,7 +16,10 @@
     if (/^(https?:|tel:|mailto:|#)/i.test(path)) return path;
     if (path.charAt(0) !== '/') path = '/' + path;
     var b = base();
-    return b ? b + path : path;
+    if (!b) return path;
+    // Avoid doubling the base when fetch() and callers both use tronexUrl().
+    if (path === b || path.indexOf(b + '/') === 0) return path;
+    return b + path;
   };
 
   var origFetch = window.fetch;
