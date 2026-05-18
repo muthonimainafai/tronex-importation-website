@@ -16,6 +16,7 @@
   </style>
 </head>
 <body>
+  <!-- TRONEX_PUBLIC_NAV -->
   <div class="pay-wrap">
     <p class="pay-back-only"><a class="btn-back" href="/car/<?= e($car['_id']) ?>">← Back to car</a></p>
     <?php include Tronex\Config::root() . '/views/partials/tronex-payment-details.php'; ?>

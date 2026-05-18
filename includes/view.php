@@ -20,7 +20,7 @@ function render_view(string $name, array $vars = []): void
     include $path;
     $html = ob_get_clean();
     header('Content-Type: text/html; charset=utf-8');
-    echo inject_tronex_head_assets(apply_app_base_to_html($html));
+    echo finalize_tronex_html($html);
 }
 
 function render_static_view(string $name): void
@@ -38,5 +38,22 @@ function render_static_view(string $name): void
     }
     header('Content-Type: text/html; charset=utf-8');
     $html = file_get_contents($path);
-    echo inject_tronex_head_assets(apply_app_base_to_html($html ?: ''));
+    echo finalize_tronex_html($html ?: '');
+}
+
+/** Minimal public page (e.g. “coming soon”) with the same navbar as the rest of the site. */
+function render_user_stub(string $title, string $message): void
+{
+    $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">'
+        . '<meta name="viewport" content="width=device-width, initial-scale=1.0">'
+        . '<title>' . e($title) . ' - Tronex Car Importers</title>'
+        . '<link rel="stylesheet" href="/css/style.css">'
+        . '<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">'
+        . '</head><body><!-- TRONEX_PUBLIC_NAV -->'
+        . '<main class="tronex-stub-main"><h1>' . e($title) . '</h1>'
+        . '<p>' . e($message) . '</p>'
+        . '<p><a href="' . e(url_path('/')) . '" class="tronex-stub-back">← Back to Home</a></p>'
+        . '</main></body></html>';
+    header('Content-Type: text/html; charset=utf-8');
+    echo finalize_tronex_html($html);
 }

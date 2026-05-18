@@ -38,6 +38,18 @@ function updateAuthNav() {
 updateAuthNav();
 let landingCars = [];
 
+/** Root-relative paths need the app base on subdirectory installs (e.g. XAMPP). */
+function assetUrl(path) {
+    if (!path) return '';
+    if (/^(https?:|data:|blob:)/i.test(path)) return path;
+    return typeof tronexUrl === 'function' ? tronexUrl(path) : path;
+}
+
+function getCarImageUrl(car) {
+    const raw = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
+    return assetUrl(raw);
+}
+
 function setupCarsGridListeners() {
     const carsGrid = document.getElementById('carsGrid');
     if (!carsGrid) return;
@@ -113,32 +125,31 @@ if (ctaButton) {
     });
 }
 
-// ==================== Mobile Menu ====================
-const hamburger = document.querySelector('.hamburger');
-const navMenu = document.querySelector('.nav-menu');
-
-if (hamburger) {
-    hamburger.addEventListener('click', () => {
-        navMenu.classList.toggle('active');
-        hamburger.classList.toggle('active');
-    });
-
-    // Close menu when a link is clicked
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', () => {
-            navMenu.classList.remove('active');
-            hamburger.classList.remove('active');
+// ==================== Mobile Menu (pages without injected public nav only) ====================
+if (!document.querySelector('.tronex-public-nav')) {
+    const hamburger = document.querySelector('.hamburger');
+    const navMenu = document.querySelector('.nav-menu');
+    if (hamburger && navMenu) {
+        hamburger.addEventListener('click', () => {
+            navMenu.classList.toggle('active');
+            hamburger.classList.toggle('active');
         });
-    });
-}
 
-// Close mobile menu when clicking outside
-document.addEventListener('click', (e) => {
-    if (!e.target.closest('.nav-container')) {
-        navMenu.classList.remove('active');
-        hamburger.classList.remove('active');
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                navMenu.classList.remove('active');
+                hamburger.classList.remove('active');
+            });
+        });
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.nav-container')) {
+                navMenu.classList.remove('active');
+                hamburger.classList.remove('active');
+            }
+        });
     }
-});
+}
 
 // ==================== Scroll Animations ====================
 const observerOptions = {
@@ -292,8 +303,10 @@ function renderVehiclesInStock(cars, options = {}) {
     carsGrid.innerHTML = visibleCars.map((car) => {
         const invoiceTotal = getInvoiceTotalFromCosts(car.invoiceCosts);
         const displayPrice = invoiceTotal !== null ? invoiceTotal : toNumericValue(car.price);
-        const thumbSrc = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
+        const thumbSrc = getCarImageUrl(car);
+        const placeholder = assetUrl('/images/placeholder-car.svg');
         const safeThumb = String(thumbSrc).replace(/"/g, '&quot;');
+        const safePlaceholder = String(placeholder).replace(/"/g, '&quot;');
         const carName = car.name || `${car.make || ''} ${car.model || ''}`.trim();
         const safeCarName = String(carName).replace(/"/g, '&quot;');
         const statusRaw = String(car.availability || 'Available');
@@ -307,13 +320,14 @@ function renderVehiclesInStock(cars, options = {}) {
             : statusClass === 'sold'
                 ? 'Sold'
                 : 'Available';
+        const imageBg = String(car.gradientColor || '').replace(/"/g, '&quot;') || 'linear-gradient(135deg, #1f4b6e 0%, #2f6a8f 100%)';
 
         return `
             <div class="car-card" data-car-id="${car._id}">
-                <div class="car-image">
+                <div class="car-image" style="background: ${imageBg}">
                     ${thumbSrc
-                        ? `<img src="${safeThumb}" alt="${safeCarName}" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder-car.svg'">`
-                        : `<div class="car-placeholder" style="background: ${car.gradientColor || '#2d2d2d'};"><i class="fas fa-car-side"></i></div>`}
+                        ? `<img src="${safeThumb}" alt="${safeCarName}" loading="lazy" onerror="this.onerror=null;this.src='${safePlaceholder}'">`
+                        : `<div class="car-placeholder" style="background: ${imageBg};"><i class="fas fa-car-side"></i></div>`}
                     <span class="car-status-badge ${statusClass}">${statusText}</span>
                 </div>
                 <div class="car-details">

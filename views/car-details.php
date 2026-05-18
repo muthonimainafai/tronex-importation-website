@@ -33,23 +33,7 @@ $imageCount = is_array($car['images'] ?? null) ? count($car['images']) : 0;
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="navbar-container">
-            <div class="navbar-logo">
-                <a href="/">
-                    <img src="/images/logos/tronexlogo2.jpeg" alt="Tronex logo" class="navbar-logo-img">
-                    <span>Tronex Car Importers Ltd</span>
-                </a>
-            </div>
-            <div class="navbar-links">
-                <a href="/">Home</a>
-                <a href="/stock-list">Stock List</a>
-                <a href="/about-us">About Us</a>
-            </div>
-        </div>
-    </nav>
-
+    <!-- TRONEX_PUBLIC_NAV -->
     <!-- Main Container -->
     <main class="car-details-container">
         <!-- Back Button -->

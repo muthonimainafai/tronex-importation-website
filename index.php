@@ -430,15 +430,15 @@ try {
     }
 
     if ($path === '/clearing-forwarding') {
-        echo '<h1>Clearing &amp; Forwarding Page - Coming Soon</h1><a href="/">Back to Home</a>';
+        render_user_stub('Clearing & Forwarding', 'This page is coming soon. We appreciate your patience.');
         exit;
     }
     if ($path === '/vessel-schedule') {
-        echo '<h1>Vessel Schedule Page - Coming Soon</h1><a href="/">Back to Home</a>';
+        render_user_stub('Vessel Schedule', 'This page is coming soon. We appreciate your patience.');
         exit;
     }
     if ($path === '/testimonials') {
-        echo '<h1>Testimonials Page - Coming Soon</h1><a href="/">Back to Home</a>';
+        render_user_stub('Testimonials', 'This page is coming soon. We appreciate your patience.');
         exit;
     }
 

@@ -95,13 +95,87 @@ function inject_tronex_head_assets(string $html): string
 {
     $base = app_base_path();
     $meta = '<meta name="tronex-base" content="' . e($base) . '">';
+    $navCss = '<link rel="stylesheet" href="' . e(url_path('/css/tronex-public-nav.css')) . '">';
     $script = '<script src="' . e(url_path('/js/tronex-base.js')) . '"></script>';
-    $inject = $meta . $script;
+    $navScript = '<script src="' . e(url_path('/js/tronex-public-nav.js')) . '" defer></script>';
+    $inject = $meta . $navCss . $script . $navScript;
 
     if (preg_match('/<head[^>]*>/i', $html)) {
         return preg_replace('/<head[^>]*>/i', '$0' . $inject, $html, 1) ?? $html;
     }
     return $inject . $html;
+}
+
+/** Active state for main public nav (matches customer routes). */
+function tronex_public_nav_link_class(string $path, string $current): string
+{
+    $base = ' nav-link';
+    if ($path === '/') {
+        return ($current === '/' || $current === '') ? $base . ' active' : $base;
+    }
+    if ($current === $path) {
+        return $base . ' active';
+    }
+    if ($path === '/stock-list' && preg_match('#^/car/\d+$#', $current)) {
+        return $base . ' active';
+    }
+    return $base;
+}
+
+/**
+ * Canonical customer navbar — same links on every public page (injected via <!-- TRONEX_PUBLIC_NAV -->).
+ */
+function tronex_public_nav_html(): string
+{
+    $cur = request_path();
+    if ($cur !== '/' && $cur !== '' && str_ends_with($cur, '/')) {
+        $cur = rtrim($cur, '/') ?: '/';
+    }
+
+    $lc = static function (string $path) use ($cur): string {
+        return tronex_public_nav_link_class($path, $cur);
+    };
+
+    $u = static fn(string $path): string => e(url_path($path));
+    $contactHref = e(url_path('/') . '#site-footer');
+    $logoSrc = e(url_path('/images/logos/tronexlogo2.jpeg'));
+
+    return '<nav class="navbar tronex-public-nav" aria-label="Main navigation">'
+        . '<div class="nav-container">'
+        . '<div class="nav-logo">'
+        . '<img src="' . $logoSrc . '" alt="Tronex logo" class="nav-logo-img" width="56" height="56">'
+        . '<a href="' . $u('/') . '">Tronex Car Importers Ltd</a>'
+        . '</div>'
+        . '<div class="hamburger" role="button" tabindex="0" aria-label="Open menu"><span></span><span></span><span></span></div>'
+        . '<ul class="nav-menu">'
+        . '<li><a href="' . $u('/') . '" class="' . trim($lc('/')) . '">Home</a></li>'
+        . '<li><a href="' . $u('/stock-list') . '" class="' . trim($lc('/stock-list')) . '">Stock List</a></li>'
+        . '<li><a href="' . $u('/about-us') . '" class="' . trim($lc('/about-us')) . '">About Us</a></li>'
+        . '<li><a href="' . $u('/vessel-schedule') . '" class="' . trim($lc('/vessel-schedule')) . '">Vessel Schedule</a></li>'
+        . '<li><a href="' . $u('/clearing-forwarding') . '" class="' . trim($lc('/clearing-forwarding')) . '">Clearing &amp; Forwarding</a></li>'
+        . '<li><a href="' . $u('/testimonials') . '" class="' . trim($lc('/testimonials')) . '">Testimonials</a></li>'
+        . '<li><a href="' . $contactHref . '" class="nav-link">Contact</a></li>'
+        . '<li id="authNavRegister"><a href="' . $u('/register') . '" class="' . trim(tronex_public_nav_link_class('/register', $cur)) . '">Register</a></li>'
+        . '<li id="authNavLogin"><a href="' . $u('/login') . '" class="' . trim(tronex_public_nav_link_class('/login', $cur)) . '">Login</a></li>'
+        . '<li id="authNavProfile" class="auth-hidden"><a href="' . $u('/my-profile') . '" class="' . trim(tronex_public_nav_link_class('/my-profile', $cur)) . '">My Profile</a></li>'
+        . '<li id="authNavLogout" class="auth-hidden"><a href="javascript:void(0)" class="nav-link">Logout</a></li>'
+        . '</ul></div></nav>';
+}
+
+/** Replace nav placeholders with the canonical public navbar. */
+function inject_tronex_public_nav(string $html): string
+{
+    $nav = tronex_public_nav_html();
+    $html = str_replace('<!-- TRONEX_PUBLIC_NAV -->', $nav, $html);
+    return str_replace('<!-- TRONEX_NAVBAR -->', $nav, $html);
+}
+
+/** Full HTML pipeline for user-facing pages (nav → base path rewrite → head assets). */
+function finalize_tronex_html(string $html): string
+{
+    $html = inject_tronex_public_nav($html);
+    $html = apply_app_base_to_html($html);
+    return inject_tronex_head_assets($html);
 }
 
 function request_method(): string

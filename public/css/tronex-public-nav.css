@@ -1,0 +1,204 @@
+/**
+ * Shared customer navbar (injected on all public pages).
+ * Works with or without public/css/style.css.
+ */
+:root {
+    --tronex-nav-primary: #1f4b6e;
+    --tronex-nav-secondary: #2f6a8f;
+    --tronex-nav-dark: #10253a;
+    --tronex-nav-light: #eef3f8;
+    --tronex-nav-white: #ffffff;
+    --tronex-nav-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --tronex-nav-shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+    --tronex-nav-transition: all 0.3s ease;
+    --tronex-nav-gradient: linear-gradient(135deg, #1f4b6e 0%, #2f6a8f 100%);
+}
+
+.tronex-public-nav.navbar {
+    background-color: var(--tronex-nav-white);
+    box-shadow: var(--tronex-nav-shadow-lg);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.tronex-public-nav .nav-container {
+    max-width: none;
+    margin: 0;
+    padding: 0.9rem 1rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.tronex-public-nav .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    background: var(--tronex-nav-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.tronex-public-nav .nav-logo-img {
+    width: 56px;
+    height: 56px;
+    object-fit: contain;
+}
+
+.tronex-public-nav .nav-logo a {
+    text-decoration: none;
+    color: inherit;
+    font-weight: 700;
+}
+
+.tronex-public-nav .nav-menu {
+    display: flex;
+    list-style: none;
+    gap: 1.25rem;
+    align-items: center;
+    margin: 0;
+    padding: 0;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+
+.tronex-public-nav .auth-hidden {
+    display: none;
+}
+
+.tronex-public-nav .nav-link {
+    text-decoration: none;
+    color: var(--tronex-nav-dark);
+    font-weight: 600;
+    position: relative;
+    transition: var(--tronex-nav-transition);
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.tronex-public-nav .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--tronex-nav-gradient);
+    transition: var(--tronex-nav-transition);
+}
+
+.tronex-public-nav .nav-link:hover::after,
+.tronex-public-nav .nav-link.active::after {
+    width: 100%;
+}
+
+.tronex-public-nav .hamburger {
+    display: none;
+    flex-direction: column;
+    cursor: pointer;
+    margin-left: auto;
+}
+
+.tronex-public-nav .hamburger span {
+    width: 25px;
+    height: 3px;
+    background-color: var(--tronex-nav-dark);
+    margin: 5px 0;
+    transition: var(--tronex-nav-transition);
+    border-radius: 2px;
+}
+
+.tronex-public-nav .hamburger.active span:nth-child(1) {
+    transform: rotate(45deg) translate(10px, 10px);
+}
+
+.tronex-public-nav .hamburger.active span:nth-child(2) {
+    opacity: 0;
+}
+
+.tronex-public-nav .hamburger.active span:nth-child(3) {
+    transform: rotate(-45deg) translate(7px, -7px);
+}
+
+/* Coming-soon / stub pages */
+.tronex-stub-main {
+    max-width: 720px;
+    margin: 2rem auto;
+    padding: 0 1.25rem 3rem;
+    line-height: 1.6;
+    color: var(--tronex-nav-dark);
+}
+
+.tronex-stub-main h1 {
+    font-size: 1.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.tronex-stub-back {
+    font-weight: 700;
+    color: var(--tronex-nav-primary);
+    text-decoration: none;
+}
+
+.tronex-stub-back:hover {
+    text-decoration: underline;
+}
+
+@media (max-width: 1100px) {
+    .tronex-public-nav .nav-menu {
+        gap: 0.75rem 1rem;
+    }
+
+    .tronex-public-nav .nav-link {
+        font-size: 0.85rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .tronex-public-nav .nav-menu {
+        display: none;
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: var(--tronex-nav-white);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        box-shadow: var(--tronex-nav-shadow-lg);
+        padding: 0.75rem 0;
+    }
+
+    .tronex-public-nav .nav-menu.active {
+        display: flex;
+    }
+
+    .tronex-public-nav .nav-menu li {
+        border-bottom: 1px solid var(--tronex-nav-light);
+    }
+
+    .tronex-public-nav .nav-menu .nav-link {
+        display: block;
+        padding: 0.85rem 1.25rem;
+    }
+
+    .tronex-public-nav .nav-menu .nav-link::after {
+        display: none;
+    }
+
+    .tronex-public-nav .hamburger {
+        display: flex;
+    }
+
+    .tronex-public-nav.navbar {
+        position: relative;
+    }
+}
