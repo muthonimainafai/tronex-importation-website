@@ -65,6 +65,19 @@ function url_path(string $path): string
     return $base . $path;
 }
 
+/**
+ * Root-relative URL path for HTML that will be passed through apply_app_base_to_html().
+ * Use this (not url_path()) for href/src in injected fragments to avoid double-prefixing subfolder installs.
+ */
+function html_root_path(string $path): string
+{
+    $path = trim($path);
+    if ($path === '' || $path === '/') {
+        return '/';
+    }
+    return '/' . ltrim($path, '/');
+}
+
 function request_path(): string
 {
     $uri = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
@@ -122,6 +135,12 @@ function tronex_public_nav_link_class(string $path, string $current): string
     return $base;
 }
 
+/** Public site brand logo (path under /public). */
+function tronex_brand_logo_path(): string
+{
+    return '/images/tronexlogo3.jpeg';
+}
+
 /**
  * Canonical customer navbar — same links on every public page (injected via <!-- TRONEX_PUBLIC_NAV -->).
  */
@@ -138,13 +157,18 @@ function tronex_public_nav_html(): string
 
     $u = static fn(string $path): string => e(url_path($path));
     $contactHref = e(url_path('/') . '#site-footer');
-    $logoSrc = e(url_path('/images/logos/tronexlogo2.jpeg'));
+    $logoPath = tronex_brand_logo_path();
+    $logoFile = dirname(__DIR__) . '/public' . $logoPath;
+    $logoVer = is_file($logoFile) ? (string) filemtime($logoFile) : '1';
+    $logoSrc = e(url_path($logoPath)) . '?v=' . e($logoVer);
 
     return '<nav class="navbar tronex-public-nav" aria-label="Main navigation">'
         . '<div class="nav-container">'
         . '<div class="nav-logo">'
-        . '<img src="' . $logoSrc . '" alt="Tronex logo" class="nav-logo-img" width="56" height="56">'
-        . '<a href="' . $u('/') . '">Tronex Car Importers Ltd</a>'
+        . '<a href="' . $u('/') . '" class="nav-logo-link" aria-label="Tronex Car Importers Ltd home">'
+        . '<img src="' . $logoSrc . '" alt="Tronex Car Importers Ltd" class="nav-logo-img" decoding="async">'
+        . '<span class="nav-logo-text">Tronex Car Importers Ltd</span>'
+        . '</a>'
         . '</div>'
         . '<div class="hamburger" role="button" tabindex="0" aria-label="Open menu"><span></span><span></span><span></span></div>'
         . '<ul class="nav-menu">'
@@ -294,6 +318,21 @@ function build_car_invoice_view_model(array $car): array
             'paybill' => '972900',
         ],
     ];
+}
+
+/** Price shown on stock list, car details, etc. (invoice total when set, else list price). */
+function resolve_car_display_price_ksh(array $car, ?array $invoice = null): float
+{
+    $invoice ??= build_car_invoice_view_model($car);
+    $fromDisplay = get_display_price_ksh($car);
+    if ($fromDisplay > 0) {
+        return $fromDisplay;
+    }
+    $fromInvoice = (float) ($invoice['totalCosts'] ?? 0);
+    if ($fromInvoice > 0) {
+        return $fromInvoice;
+    }
+    return max(0, (float) ($car['price'] ?? 0));
 }
 
 function get_display_price_ksh(array $car): float

@@ -38,9 +38,8 @@ body {
 .navbar {
     background-color: var(--white);
     box-shadow: var(--shadow-lg);
-    position: sticky;
-    top: 0;
-    z-index: 1000;
+    position: static;
+    z-index: 100;
 }
 
 .nav-container {
@@ -53,9 +52,47 @@ body {
 }
 
 .nav-logo {
+    flex-shrink: 0;
+}
+
+.nav-logo-link {
     display: flex;
     align-items: center;
     gap: 0.65rem;
+    padding: 0;
+    margin: 0;
+    border: none;
+    outline: none;
+    background: transparent;
+    box-shadow: none;
+    text-decoration: none;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.nav-logo-link:focus,
+.nav-logo-link:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+
+.nav-logo-img {
+    display: block;
+    height: 88px;
+    width: auto;
+    max-width: 168px;
+    object-fit: contain;
+    object-position: center left;
+    flex-shrink: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    box-shadow: none;
+    image-rendering: auto;
+}
+
+.nav-logo-text {
     font-size: 1.2rem;
     font-weight: 700;
     background: var(--gradient-primary);
@@ -63,12 +100,6 @@ body {
     -webkit-text-fill-color: transparent;
     background-clip: text;
     cursor: pointer;
-}
-
-.nav-logo-img {
-    width: 56px;
-    height: 56px;
-    object-fit: contain;
 }
 
 .nav-menu {

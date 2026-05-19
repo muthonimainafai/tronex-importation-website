@@ -47,7 +47,10 @@ function assetUrl(path) {
 
 function getCarImageUrl(car) {
     const raw = car.mainImage || (Array.isArray(car.images) && car.images[0]) || '';
-    return assetUrl(raw);
+    if (raw === null || raw === undefined) return '';
+    const text = String(raw).trim().replace(/\\/g, '/');
+    if (!text || text.toLowerCase() === 'null' || text.toLowerCase() === 'undefined') return '';
+    return assetUrl(text);
 }
 
 function setupCarsGridListeners() {

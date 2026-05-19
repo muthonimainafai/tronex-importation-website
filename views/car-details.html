@@ -14,10 +14,8 @@
         const resolvedDisplayPrice = (() => {
             const fromDisplay = Number(car.displayPriceKsh);
             if (Number.isFinite(fromDisplay) && fromDisplay > 0) return fromDisplay;
-
             const fromInvoice = Number(invoice && invoice.totalCosts);
             if (Number.isFinite(fromInvoice) && fromInvoice > 0) return fromInvoice;
-
             const fromCarPrice = Number(car.price);
             if (Number.isFinite(fromCarPrice) && fromCarPrice > 0) return fromCarPrice;
 

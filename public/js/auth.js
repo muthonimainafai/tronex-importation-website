@@ -12,6 +12,27 @@ function clearMsg() {
   el.style.display = 'none';
 }
 
+const TRONEX_CHECKOUT_CAR_KEY = 'tronex_checkout_car_id';
+
+function rememberCheckoutCarId(carId) {
+  const id = String(carId || '').trim();
+  if (/^\d+$/.test(id)) {
+    localStorage.setItem(TRONEX_CHECKOUT_CAR_KEY, id);
+  }
+}
+
+function extractCarIdFromPaymentPath(path) {
+  if (!path || typeof path !== 'string') return null;
+  const m = path.match(/\/payment-details\/(\d+)/i) || path.match(/\/payment\/(\d+)/i);
+  return m ? m[1] : null;
+}
+
+function getPaymentRedirectUrl() {
+  const id = localStorage.getItem(TRONEX_CHECKOUT_CAR_KEY);
+  if (!id || !/^\d+$/.test(id)) return null;
+  return `/payment-details/${id}?ts=${Date.now()}`;
+}
+
 /** Safe in-app path only (prevents open redirects). */
 function getPostAuthRedirectUrl() {
   const params = new URLSearchParams(window.location.search);
@@ -22,6 +43,19 @@ function getPostAuthRedirectUrl() {
   const lower = trimmed.toLowerCase();
   if (lower.includes('javascript:') || lower.includes('data:')) return null;
   return trimmed;
+}
+
+/** After login/register: ?next=, then payment for remembered car, then stock list. */
+function resolvePostAuthRedirectUrl() {
+  const explicit = getPostAuthRedirectUrl();
+  if (explicit) {
+    const carId = extractCarIdFromPaymentPath(explicit);
+    if (carId) rememberCheckoutCarId(carId);
+    return explicit;
+  }
+  const payment = getPaymentRedirectUrl();
+  if (payment) return payment;
+  return '/stock-list';
 }
 
 function preserveNextOnAuthSwitchLinks() {
@@ -79,8 +113,7 @@ async function registerFlow(e) {
     saveSession(data.token, data.user);
     setMsg('Registration successful. Redirecting…', 'success');
     setTimeout(() => {
-      const dest = getPostAuthRedirectUrl() || '/my-profile';
-      window.location.href = tronexUrl(dest);
+      window.location.href = tronexUrl(resolvePostAuthRedirectUrl());
     }, 600);
   } catch (err) {
     setMsg(err.message || 'Registration failed', 'error');
@@ -123,8 +156,7 @@ async function loginFlow(e) {
     if (passwordInput) passwordInput.value = '';
     setMsg('Login successful. Redirecting…', 'success');
     setTimeout(() => {
-      const dest = getPostAuthRedirectUrl() || '/';
-      window.location.href = tronexUrl(dest);
+      window.location.href = tronexUrl(resolvePostAuthRedirectUrl());
     }, 500);
   } catch (err) {
     setMsg(err.message || 'Login failed', 'error');

@@ -309,82 +309,82 @@
                 <!-- Invoice Costs Section (KES) -->
                 <fieldset class="form-section">
                     <legend class="form-section-title">🧾 Invoice Costs (Admin fills Cost)</legend>
-                    <p style="margin:-6px 0 10px;color:#7f8c8d">
+                    <p class="invoice-costs-note">
                         Descriptions are fixed. Fill only the <strong>Cost</strong>. Totals are calculated automatically and shown on the car invoice.
                     </p>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Cost insurance and Freight (CIF) - KES</label>
                             <input type="text" id="inv_cif" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Port/Cfs Charges - KES</label>
                             <input type="text" id="inv_portCfsCharges" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Shipping line/D.O - KES</label>
                             <input type="text" id="inv_shippingLineDo" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Radiation - KES</label>
                             <input type="text" id="inv_radiation" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>MSS Levy - KES</label>
                             <input type="text" id="inv_mssLevy" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Clearing service Charge - KES</label>
                             <input type="text" id="inv_clearingServiceCharge" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>KG Plate (cic ins. comp.insured) - KES</label>
                             <input type="text" id="inv_kgPlate" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>NTSA Sticker - KES</label>
                             <input type="text" id="inv_ntsaSticker" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Handling Costs - KES</label>
                             <input type="text" id="inv_handlingCosts" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Duty Payable - KES</label>
                             <input type="text" id="inv_dutyPayable" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Discount - KES</label>
                             <input type="text" id="inv_discount" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Itemized Need Analysis Total (auto)</label>
                             <input type="text" id="inv_itemizedNeedTotal" disabled class="form-input-disabled" placeholder="KES 0.00">
                         </div>
                     </div>
 
                     <div class="form-row">
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>Itemized Duty &amp; Taxes Total (auto)</label>
                             <input type="text" id="inv_itemizedDutyTaxesTotal" disabled class="form-input-disabled" placeholder="KES 0.00">
                         </div>
-                        <div class="form-group" style="flex:1">
+                        <div class="form-group form-group-half">
                             <label>TOTAL COSTS (auto)</label>
                             <input type="text" id="inv_totalCosts" disabled class="form-input-disabled" placeholder="KES 0.00">
                         </div>
@@ -414,7 +414,7 @@
                         <div class="progress-bar">
                             <div class="progress-fill"></div>
                         </div>
-                        <small id="uploadStatus" style="color: #667eea; margin-top: 0.5rem; display: block;"></small>
+                        <small id="uploadStatus" class="upload-status-text"></small>
                     </div>
 
                     <!-- Image Preview Grid -->
@@ -431,7 +431,7 @@
                         <select id="mainImageSelect" class="form-input-select">
                             <option value="">-- No main image selected --</option>
                         </select>
-                        <small style="color: #95a5a6; margin-top: 0.5rem; display: block;">The main image will be displayed on the vehicle listing page</small>
+                        <small class="main-image-help">The main image will be displayed on the vehicle listing page</small>
                     </div>
 
                     <!-- Hidden fields to store image URLs -->

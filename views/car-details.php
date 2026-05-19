@@ -1,16 +1,5 @@
 <?php
-$resolvedDisplayPrice = (function () {
-    $fromDisplay = (float) ($car['displayPriceKsh'] ?? 0);
-    if ($fromDisplay > 0) {
-        return $fromDisplay;
-    }
-    $fromInvoice = (float) ($invoice['totalCosts'] ?? 0);
-    if ($fromInvoice > 0) {
-        return $fromInvoice;
-    }
-    $fromCarPrice = (float) ($car['price'] ?? 0);
-    return $fromCarPrice > 0 ? $fromCarPrice : 0;
-})();
+$resolvedDisplayPrice = resolve_car_display_price_ksh($car, $invoice);
 $availClass = strtolower($car['availability'] ?? 'available');
 $carTitle = ($car['make'] ?? '') . ' ' . ($car['model'] ?? '');
 $mainImg = $car['mainImage'] ?? '';

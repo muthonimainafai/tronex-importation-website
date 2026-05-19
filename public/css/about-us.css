@@ -4,11 +4,21 @@
     box-sizing: border-box;
 }
 
-body {
+html {
+    scroll-behavior: smooth;
+}
+
+body.about-page {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     color: #333;
     line-height: 1.6;
+    margin: 0;
+    padding: 0;
     background: #f6f8fb;
+}
+
+.about-page .tronex-public-nav.navbar {
+    margin: 0;
 }
 
 /* Hero Section */
@@ -30,17 +40,17 @@ body {
     opacity: 0.9;
 }
 
-/* Container */
-.container {
+/* Main content */
+.about-page .about-main {
     max-width: 1200px;
     margin: 0 auto;
-    padding: 2rem;
+    padding: 1.25rem 1.5rem 2.5rem;
 }
 
 /* Section Styling */
-section {
-    padding: 3rem;
-    margin-bottom: 1.5rem;
+.about-page section {
+    padding: 2.5rem;
+    margin-bottom: 1.25rem;
     background: #ffffff;
     border: 1px solid #e8edf3;
     border-radius: 16px;
@@ -88,7 +98,9 @@ section h2 {
 }
 
 .image-placeholder {
-    height: 400px;
+    min-height: 280px;
+    height: auto;
+    aspect-ratio: 4 / 3;
     background: #eef3f8;
     border-radius: 15px;
     display: flex;
@@ -265,9 +277,9 @@ section h2 {
     background: #ffffff;
     color: #1f2937;
     text-align: center;
-    padding: 4rem 2rem;
+    padding: 3rem 2rem;
     border-radius: 15px;
-    margin: 3rem 0;
+    margin: 0;
     border: 1px solid #e7edf5;
 }
 
@@ -321,11 +333,11 @@ section h2 {
 }
 
 /* Footer */
-.footer {
+.about-page .footer {
     background: #1a1a1a;
     color: white;
     padding: 3rem 2rem 1rem;
-    margin-top: 4rem;
+    margin-top: 0;
 }
 
 .footer-content {
@@ -385,8 +397,12 @@ section h2 {
 
 /* Responsive Design */
 @media (max-width: 768px) {
-    .nav-links {
-        gap: 1rem;
+    .about-page .about-main {
+        padding: 1rem 1rem 2rem;
+    }
+
+    .about-page section {
+        padding: 1.75rem 1.25rem;
     }
 
     .hero-content h1 {
@@ -399,7 +415,7 @@ section h2 {
     }
 
     .image-placeholder {
-        height: 300px;
+        min-height: 220px;
         font-size: 4rem;
     }
 
@@ -414,9 +430,25 @@ section h2 {
     }
 }
 
-/* Theme alignment with landing page */
-.logo,
-.nav-links a:hover,
-.nav-links a.active {
-    color: #1f4b6e;
+/* Injected main nav — keep all items visible and aligned with other public pages */
+.about-page .tronex-public-nav .nav-container {
+    flex-wrap: nowrap;
+}
+
+@media (max-width: 1100px) {
+    .about-page .tronex-public-nav .nav-container {
+        flex-wrap: wrap;
+    }
+}
+
+.tronex-public-nav .nav-menu li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.tronex-public-nav .nav-menu {
+    flex: 1 1 auto;
+    justify-content: flex-end;
+    min-width: 0;
 }

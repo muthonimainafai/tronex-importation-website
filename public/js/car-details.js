@@ -2,8 +2,24 @@
 let carImages = [];
 let currentImageIndex = 0;
 
+const TRONEX_CHECKOUT_CAR_KEY = 'tronex_checkout_car_id';
+
+function rememberCheckoutCarId(carId) {
+    const id = String(carId || '').trim();
+    if (/^\d+$/.test(id)) {
+        localStorage.setItem(TRONEX_CHECKOUT_CAR_KEY, id);
+    }
+}
+
+function rememberCheckoutCarFromPageUrl() {
+    const m = window.location.pathname.match(/\/car\/(\d+)\/?$/i);
+    if (m) rememberCheckoutCarId(m[1]);
+}
+
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    rememberCheckoutCarFromPageUrl();
+
     // Get car images from DOM
     const totalImagesSpan = document.getElementById('totalImages');
     if (totalImagesSpan) {
@@ -19,6 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Buy Now -> Payment page (requires login)
 function buyNow(carId) {
+    rememberCheckoutCarId(carId);
     const token = localStorage.getItem('tronex_token');
     const ts = Date.now(); // cache-bust payment page HTML
     if (!token) {

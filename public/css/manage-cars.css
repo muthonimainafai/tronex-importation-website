@@ -452,6 +452,27 @@ body {
     grid-column: 1 / -1;
 }
 
+.form-group-half {
+    flex: 1;
+}
+
+.invoice-costs-note {
+    margin: -6px 0 10px;
+    color: #7f8c8d;
+}
+
+.upload-status-text {
+    color: #667eea;
+    margin-top: 0.5rem;
+    display: block;
+}
+
+.main-image-help {
+    color: #95a5a6;
+    margin-top: 0.5rem;
+    display: block;
+}
+
 .form-group label {
     font-weight: 600;
     margin-bottom: 0.8rem;

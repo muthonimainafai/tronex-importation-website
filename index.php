@@ -450,7 +450,10 @@ try {
             exit;
         }
         $car['displayPriceKsh'] = get_display_price_ksh($car);
-        render_view('car-details.php', ['car' => $car, 'invoice' => build_car_invoice_view_model($car)]);
+        render_view('car-details.php', [
+            'car' => $car,
+            'invoice' => build_car_invoice_view_model($car),
+        ]);
         exit;
     }
 
