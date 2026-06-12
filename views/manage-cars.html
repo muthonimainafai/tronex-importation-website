@@ -8,7 +8,7 @@
     <meta http-equiv="Expires" content="0" />
     <title>Manage Cars - Tronex Admin</title>
     <link rel="stylesheet" href="/css/manage-cars.css">
-    <link rel="stylesheet" href="/css/image-upload.css">
+    <link rel="stylesheet" href="/css/image-upload.css?v=20260610">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
@@ -19,9 +19,14 @@
                 <h1><i class="fas fa-car"></i> Manage Vehicles</h1>
                 <p>Add, edit, and manage your vehicle inventory</p>
             </div>
-            <button class="btn-add-new" id="addNewBtn">
-                <i class="fas fa-plus-circle"></i> Add New Vehicle
-            </button>
+            <div class="header-actions">
+                <button type="button" class="btn-logout" id="logoutBtn" title="Log out and return to homepage">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </button>
+                <button type="button" class="btn-add-new" id="addNewBtn">
+                    <i class="fas fa-plus-circle"></i> Add New Vehicle
+                </button>
+            </div>
         </header>
 
         <!-- Filters -->
@@ -161,7 +166,7 @@
                     <legend class="form-section-title">💰 Pricing & Availability</legend>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="price">Price ($) *</label>
+                            <label for="price">Price (Ksh) *</label>
                             <input type="text" id="price" class="js-amount-input" inputmode="decimal" required placeholder="25000" autocomplete="off">
                         </div>
                         <div class="form-group">
@@ -351,10 +356,6 @@
                             <label>KG Plate (cic ins. comp.insured) - KES</label>
                             <input type="text" id="inv_kgPlate" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
                         </div>
-                        <div class="form-group form-group-half">
-                            <label>NTSA Sticker - KES</label>
-                            <input type="text" id="inv_ntsaSticker" class="js-invoice-amount" inputmode="decimal" placeholder="0" autocomplete="off">
-                        </div>
                     </div>
 
                     <div class="form-row">
@@ -400,11 +401,11 @@
                     <div class="form-group form-group-full">
                         <label for="imageUpload">Upload Car Images</label>
                         <div class="image-upload-wrapper">
-                            <input type="file" id="imageUpload" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="image-input">
+                            <input type="file" id="imageUpload" name="images" multiple accept="image/jpeg,image/png,image/webp,image/gif" class="image-input">
                             <div class="upload-hint">
                                 <i class="fas fa-cloud-upload-alt"></i>
-                                <p>Click to select or drag & drop images here</p>
-                                <small>Supported: JPEG, PNG, WebP, GIF | Max 5MB each | Max 10 images</small>
+                                <p>Click to select multiple photos or drag &amp; drop them here</p>
+                                <small>Tip: hold Ctrl (Windows) or Cmd (Mac) to pick several files at once. JPEG, PNG, WebP, GIF — max 5MB each, up to 10 images total.</small>
                             </div>
                         </div>
                     </div>
@@ -473,8 +474,9 @@
     <!-- Toast Notification -->
     <div id="toast" class="toast"></div>
 
-    <script src="/js/admin-guard.js"></script>
-    <script src="/js/manage-cars.js?v=20260516"></script>
+    <script src="/js/admin-paths.js?v=20260613"></script>
+    <script src="/js/admin-guard.js?v=20260613"></script>
+    <script src="/js/manage-cars.js?v=20260613"></script>
    <!-- <script src="/js/image-upload.js"></script> -->
 </body>
 </html>

@@ -70,6 +70,16 @@ final class Auth
         return $cookies['tronex_token'] ?? null;
     }
 
+    public static function getAdminPanelToken(): ?string
+    {
+        $auth = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
+        if (preg_match('/^Bearer\s+(.+)$/i', $auth, $m)) {
+            return trim($m[1]);
+        }
+        $cookies = parse_cookies();
+        return $cookies['tronex_admin_token'] ?? null;
+    }
+
     public static function isAdminPayload(?array $decoded): bool
     {
         if (!$decoded) {
@@ -80,13 +90,30 @@ final class Auth
 
     public static function requireAdminJson(): ?array
     {
-        $token = self::getBearerToken();
+        $token = self::getAdminPanelToken();
         if (!$token) {
             json_response(['success' => false, 'message' => 'Admin authentication required'], 401);
         }
         $decoded = self::decodeToken($token);
         if (!$decoded || !self::isAdminPayload($decoded)) {
             json_response(['success' => false, 'message' => 'Admin access required'], 403);
+        }
+        return $decoded;
+    }
+
+    public static function requireAdminPage(): array
+    {
+        $token = self::getAdminPanelToken();
+        if (!$token) {
+            $next = rawurlencode($_SERVER['REQUEST_URI'] ?? '/');
+            header('Location: ' . url_path('/admin...?next=' . $next));
+            exit;
+        }
+        $decoded = self::decodeToken($token);
+        if (!$decoded || !self::isAdminPayload($decoded)) {
+            $next = rawurlencode($_SERVER['REQUEST_URI'] ?? '/');
+            header('Location: ' . url_path('/admin...?next=' . $next));
+            exit;
         }
         return $decoded;
     }

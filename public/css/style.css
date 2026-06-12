@@ -496,9 +496,8 @@ body {
 .hero-cars-pair {
     position: relative;
     width: min(920px, 100%);
-    min-height: 580px;
     display: flex;
-    align-items: center;
+    align-items: stretch;
     justify-content: center;
     gap: 0;
     overflow: hidden;
@@ -508,7 +507,9 @@ body {
 .hero-car {
     width: 50%;
     max-width: none;
-    height: 100%;
+    height: auto;
+    min-height: 100%;
+    align-self: stretch;
     border-radius: 0;
     object-fit: cover;
     box-shadow: none;
@@ -524,6 +525,37 @@ body {
 .hero-car-right {
     transform: scaleX(-1);
     z-index: 1;
+}
+
+@media (min-width: 1025px) {
+    .hero {
+        min-height: auto;
+        padding: 3.5rem 32px 4.5rem;
+        gap: 2rem;
+        grid-template-columns: 1fr 1.1fr;
+    }
+
+    .hero-image {
+        justify-content: flex-end;
+    }
+
+    .hero-cars-pair {
+        min-height: unset;
+        width: 100%;
+        max-width: 720px;
+        height: auto;
+        border-radius: 16px;
+        box-shadow: 0 14px 36px rgba(0, 0, 0, 0.28);
+    }
+
+    .hero-car {
+        width: 50%;
+        height: auto;
+        min-height: unset;
+        align-self: auto;
+        object-fit: contain;
+        object-position: center bottom;
+    }
 }
 
 @keyframes float {
@@ -1253,25 +1285,53 @@ body {
 
     .hero-title {
         font-size: 2rem;
+        margin-bottom: 0.65rem;
     }
 
     .hero-subtitle {
         font-size: 1rem;
+        margin-bottom: 0.85rem;
+        line-height: 1.45;
+    }
+
+    .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0;
+        padding: 1.25rem 14px 0;
+    }
+
+    .hero-content {
+        max-width: none;
+        margin-bottom: 0.65rem;
+    }
+
+    .cta-button {
+        padding: 0.75rem 1.75rem;
+        font-size: 1rem;
     }
 
     .hero-image {
-        display: flex;
-        margin-top: 0.2rem;
+        display: block;
+        margin: 0;
+        padding: 0;
+        width: 100%;
+        animation: none;
     }
 
     .hero-cars-pair {
-        width: min(760px, 100%);
-        min-height: 420px;
+        width: 100%;
+        min-height: 0;
+        max-height: 190px;
+        aspect-ratio: 16 / 9;
+        border-radius: 12px;
     }
 
     .hero-car {
         width: 50%;
-        max-width: none;
+        height: 100%;
+        min-height: 0;
     }
 
     .hero-car-left {
@@ -1280,6 +1340,11 @@ body {
 
     .hero-car-right {
         transform: scaleX(-1);
+    }
+
+    .search-section {
+        margin-top: 0;
+        padding: 1.5rem 16px 3rem;
     }
 
     .section-title {
@@ -1349,10 +1414,30 @@ body {
 
     .hero-title {
         font-size: 1.5rem;
+        margin-bottom: 0.5rem;
     }
 
     .hero-subtitle {
         font-size: 0.9rem;
+        margin-bottom: 0.75rem;
+    }
+
+    .hero {
+        padding: 1rem 12px 0;
+    }
+
+    .hero-content {
+        margin-bottom: 0.5rem;
+    }
+
+    .hero-cars-pair {
+        max-height: 160px;
+        aspect-ratio: 5 / 3;
+        border-radius: 10px;
+    }
+
+    .search-section {
+        padding: 1.25rem 12px 2.5rem;
     }
 
     .search-container h2 {

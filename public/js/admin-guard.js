@@ -2,6 +2,8 @@
  * Client gate for admin HTML pages. API calls still enforce auth server-side.
  */
 (function adminGuard() {
+    var ADMIN_LOGIN = window.TRONEX_ADMIN_LOGIN || '/admin...';
+
     function basePath() {
         if (typeof tronexBase === 'function') {
             return tronexBase();
@@ -22,7 +24,7 @@
 
     function loginUrl(next) {
         var base = basePath();
-        var url = (base || '') + '/admin-login';
+        var url = (base || '') + ADMIN_LOGIN;
         if (next) {
             url += '?next=' + encodeURIComponent(next);
         }
@@ -67,10 +69,25 @@
         }
     }
 
-    function redirectToLogin() {
+    function clearAdminSession() {
         localStorage.removeItem('adminToken');
+        try {
+            document.cookie = 'tronex_admin_token=; Max-Age=0; Path=/; SameSite=Lax';
+        } catch (_) {}
+    }
+
+    function persistAdminSession(token) {
+        localStorage.setItem('adminToken', token);
+        try {
+            var maxAge = 60 * 60 * 8;
+            document.cookie = 'tronex_admin_token=' + encodeURIComponent(token) + '; Max-Age=' + maxAge + '; Path=/; SameSite=Lax';
+        } catch (_) {}
+    }
+
+    function redirectToLogin() {
+        clearAdminSession();
         var target = typeof tronexUrl === 'function'
-            ? tronexUrl('/admin-login?next=' + encodeURIComponent(appRelativePath()))
+            ? tronexUrl(ADMIN_LOGIN + '?next=' + encodeURIComponent(appRelativePath()))
             : loginUrl(appRelativePath());
         window.location.replace(target);
     }
@@ -78,5 +95,7 @@
     var token = normalizeToken(localStorage.getItem('adminToken'));
     if (!isAdminToken(token)) {
         redirectToLogin();
+        return;
     }
+    persistAdminSession(token);
 })();

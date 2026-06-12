@@ -111,8 +111,11 @@ function navigateToSection(section) {
 function handleLogout() {
     console.log('🚪 Logging out...');
     localStorage.removeItem('adminToken');
+    try {
+        document.cookie = 'tronex_admin_token=; Max-Age=0; Path=/; SameSite=Lax';
+    } catch (_) {}
     sessionStorage.clear();
-    window.location.href = tronexUrl('/admin-login');
+    window.location.href = tronexUrl(window.TRONEX_ADMIN_LOGIN || '/admin...');
 }
 
 // Refresh dashboard stats periodically (every 30 seconds)

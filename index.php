@@ -15,6 +15,54 @@ $method = request_method();
 $path = request_path();
 
 // ---------- Helpers ----------
+function api_exception_message(\Throwable $e): string
+{
+    $msg = $e->getMessage();
+    $prev = $e->getPrevious();
+    if ($prev instanceof \PDOException) {
+        $msg .= ' ' . $prev->getMessage();
+    }
+    if (
+        $e instanceof \PDOException
+        || $prev instanceof \PDOException
+        || str_contains($msg, 'Database connection failed')
+        || str_contains($msg, 'SQLSTATE')
+        || str_contains($msg, 'Access denied')
+        || str_contains($msg, "doesn't exist")
+    ) {
+        if (str_contains($msg, 'invoice_costs_json') || str_contains($msg, 'Unknown column')) {
+            return 'Database schema is outdated. In phpMyAdmin, import database/schema.sql or run database/patch-invoice-costs-column.sql.';
+        }
+        if (str_contains($msg, "Table") && str_contains($msg, "doesn't exist")) {
+            return 'Cars table missing. Import database/schema.sql in phpMyAdmin for your database.';
+        }
+        return 'Database connection failed. In .env on the server, set DB_NAME, DB_USER, and DB_PASS to the exact values from your hosting panel (include any prefix, e.g. tronexca_mydatabase).';
+    }
+    if (!Tronex\Config::isProduction()) {
+        return get_class($e) . ': ' . $e->getMessage();
+    }
+    return 'Internal server error';
+}
+
+function car_save_error_message(\PDOException $e): string
+{
+    $sqlState = (string) $e->getCode();
+    $msg = $e->getMessage();
+    if (str_contains($msg, 'invoice_costs_json')) {
+        return 'Database is missing the invoice_costs_json column. Re-import database/schema.sql or run the latest migration in phpMyAdmin.';
+    }
+    if ($sqlState === '23000' || str_contains($msg, 'Duplicate entry')) {
+        return 'A vehicle with this stock reference already exists.';
+    }
+    if (str_contains($msg, 'availability') || str_contains($msg, 'Data truncated')) {
+        return 'Invalid status selected. Choose Available, Reserved, or Sold.';
+    }
+    if (!Tronex\Config::isProduction()) {
+        return 'Database error: ' . $msg;
+    }
+    return 'Could not save vehicle. Check all required fields and try again.';
+}
+
 function validate_car_payload(array $body): ?array
 {
     $year = filter_var($body['year'] ?? null, FILTER_VALIDATE_INT);
@@ -37,19 +85,19 @@ function validate_car_payload(array $body): ?array
         'mileage' => (int) $mileage,
         'color' => $body['color'],
         'description' => $body['description'],
-        'type' => $body['type'] ?? 'Sedan',
+        'type' => sanitize_car_select($body['type'] ?? '', 'Sedan'),
         'bodyType' => $body['bodyType'] ?? '',
-        'transmission' => $body['transmission'] ?? 'Automatic',
+        'transmission' => sanitize_car_select($body['transmission'] ?? '', 'Automatic'),
         'interiorColor' => $body['interiorColor'] ?? '',
         'doors' => $body['doors'] ?? 4,
         'seats' => $body['seats'] ?? 5,
-        'fuel' => $body['fuel'] ?? 'Petrol',
-        'drive' => $body['drive'] ?? '2WD',
+        'fuel' => sanitize_car_select($body['fuel'] ?? '', 'Petrol'),
+        'drive' => sanitize_car_select($body['drive'] ?? '', '2WD'),
         'engineCapacity' => $body['engineCapacity'] ?? '',
         'trunk' => $body['trunk'] ?? '',
         'registration' => $body['registration'] ?? '',
         'badge' => $body['badge'] ?? 'Featured',
-        'availability' => $body['availability'] ?? 'Available',
+        'availability' => sanitize_car_availability($body['availability'] ?? ''),
         'gradientColor' => $body['gradientColor'] ?? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
         'highlights' => $body['highlights'] ?? [],
         'features' => $body['features'] ?? [],
@@ -61,6 +109,27 @@ function validate_car_payload(array $body): ?array
 }
 
 try {
+    // ---------- API: Health (database check) ----------
+    if ($method === 'GET' && $path === '/api/health') {
+        try {
+            $pdo = Tronex\Database::pdo();
+            $pdo->query('SELECT 1');
+            $hasCars = (bool) $pdo->query("SHOW TABLES LIKE 'cars'")->fetch();
+            $hasCounters = (bool) $pdo->query("SHOW TABLES LIKE 'counters'")->fetch();
+            json_response([
+                'success' => true,
+                'database' => 'connected',
+                'tables' => ['cars' => $hasCars, 'counters' => $hasCounters],
+            ]);
+        } catch (\Throwable $e) {
+            json_response([
+                'success' => false,
+                'database' => 'failed',
+                'message' => api_exception_message($e),
+            ], 503);
+        }
+    }
+
     // ---------- API: Contact ----------
     if ($method === 'POST' && $path === '/api/contact') {
         $body = read_json_body();
@@ -296,17 +365,25 @@ try {
     if ($method === 'POST' && $path === '/api/admin/cars') {
         Auth::requireAdminJson();
         $data = validate_car_payload(read_json_body());
-        $car = CarRepository::create($data);
-        json_response(['success' => true, 'message' => 'Car added successfully', 'data' => $car], 201);
+        try {
+            $car = CarRepository::create($data);
+            json_response(['success' => true, 'message' => 'Car added successfully', 'data' => $car], 201);
+        } catch (\Throwable $e) {
+            json_response(['success' => false, 'message' => api_exception_message($e)], 500);
+        }
     }
     if ($method === 'PUT' && preg_match('#^/api/admin/cars/(\d+)$#', $path, $m)) {
         Auth::requireAdminJson();
         $data = validate_car_payload(read_json_body());
-        $car = CarRepository::update((int) $m[1], $data);
-        if (!$car) {
-            json_response(['success' => false, 'message' => 'Car not found'], 404);
+        try {
+            $car = CarRepository::update((int) $m[1], $data);
+            if (!$car) {
+                json_response(['success' => false, 'message' => 'Car not found'], 404);
+            }
+            json_response(['success' => true, 'message' => 'Car updated successfully', 'data' => $car]);
+        } catch (\Throwable $e) {
+            json_response(['success' => false, 'message' => api_exception_message($e)], 500);
         }
-        json_response(['success' => true, 'message' => 'Car updated successfully', 'data' => $car]);
     }
     if ($method === 'DELETE' && preg_match('#^/api/admin/cars/(\d+)$#', $path, $m)) {
         Auth::requireAdminJson();
@@ -332,33 +409,35 @@ try {
     }
     if ($method === 'POST' && $path === '/api/upload/images') {
         Auth::requireAdminJson();
-        if (empty($_FILES['images'])) {
+        $fileList = normalize_uploaded_files('images');
+        if ($fileList === []) {
             json_response(['success' => false, 'message' => 'No image files provided'], 400);
         }
         $uploaded = [];
-        $files = $_FILES['images'];
-        $count = is_array($files['name']) ? count($files['name']) : 1;
-        for ($i = 0; $i < $count; $i++) {
-            $file = is_array($files['name']) ? [
-                'name' => $files['name'][$i],
-                'type' => $files['type'][$i],
-                'tmp_name' => $files['tmp_name'][$i],
-                'error' => $files['error'][$i],
-                'size' => $files['size'][$i],
-            ] : $files;
+        $errors = [];
+        foreach ($fileList as $file) {
             if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                $errors[] = ($file['name'] ?? 'file') . ': upload error ' . (int) $file['error'];
                 continue;
             }
             try {
                 $uploaded[] = ImageService::handleCarUpload($file);
-            } catch (\Throwable) {
-                // skip failed file
+            } catch (\Throwable $e) {
+                $errors[] = ($file['name'] ?? 'file') . ': ' . $e->getMessage();
             }
+        }
+        if ($uploaded === []) {
+            json_response([
+                'success' => false,
+                'message' => $errors[0] ?? 'No images could be uploaded',
+                'errors' => $errors,
+            ], 400);
         }
         json_response([
             'success' => true,
-            'message' => count($uploaded) . ' images uploaded successfully',
+            'message' => count($uploaded) . ' image(s) uploaded successfully',
             'data' => $uploaded,
+            'errors' => $errors,
         ]);
     }
     if ($method === 'DELETE' && preg_match('#^/api/upload/image/([^/]+)$#', $path, $m)) {
@@ -402,15 +481,31 @@ try {
     }
 
     // ---------- Web pages ----------
+    $adminBase = '/admin...';
+
+    // Old admin URLs → login (protected destinations use ?next= so user must sign in first)
+    $legacyAdminRedirects = [
+        '/admin-login' => $adminBase,
+        '/admin-dashboard' => $adminBase . '?next=' . rawurlencode($adminBase . '/dashboard'),
+        '/manage-cars' => $adminBase . '?next=' . rawurlencode($adminBase . '/manage-cars'),
+        '/admin' => $adminBase,
+        '/admin/' => $adminBase,
+        '/admin/login' => $adminBase,
+        '/admin/dashboard' => $adminBase . '?next=' . rawurlencode($adminBase . '/dashboard'),
+        '/admin/manage-cars' => $adminBase . '?next=' . rawurlencode($adminBase . '/manage-cars'),
+    ];
+    if (isset($legacyAdminRedirects[$path])) {
+        header('Location: ' . url_path($legacyAdminRedirects[$path]), true, 301);
+        exit;
+    }
+
     $pages = [
         '/' => 'index.html',
         '/about-us' => 'about-us.html',
         '/register' => 'register.html',
         '/login' => 'login.html',
         '/stock-list' => 'stock-list.html',
-        '/admin-login' => 'admin-login.html',
-        '/admin-dashboard' => 'admin.html',
-        '/manage-cars' => 'manage-cars.html',
+        $adminBase => 'admin-login.html',
     ];
 
     if (isset($pages[$path])) {
@@ -418,8 +513,15 @@ try {
         exit;
     }
 
-    if ($path === '/admin') {
-        header('Location: ' . url_path('/admin-login'), true, 302);
+    if ($path === $adminBase . '/dashboard') {
+        Auth::requireAdminPage();
+        render_static_view('admin.html');
+        exit;
+    }
+
+    if ($path === $adminBase . '/manage-cars') {
+        Auth::requireAdminPage();
+        render_static_view('manage-cars.html');
         exit;
     }
 
@@ -486,7 +588,7 @@ try {
     echo 'Page not found — <a href="/">Back to Home</a>';
 } catch (\Throwable $e) {
     if (str_starts_with($path, '/api/')) {
-        json_response(['success' => false, 'message' => 'Internal server error'], 500);
+        json_response(['success' => false, 'message' => api_exception_message($e)], 500);
     }
     http_response_code(500);
     echo Tronex\Config::isProduction() ? 'Internal server error' : e($e->getMessage());

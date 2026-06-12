@@ -1,17 +1,49 @@
+const ADMIN_BASE = window.TRONEX_ADMIN_BASE || '/admin...';
+const ADMIN_DEFAULT_PATH = window.TRONEX_ADMIN_DASHBOARD || '/admin.../dashboard';
+
+function mapLegacyAdminPath(path) {
+    const legacy = {
+        '/admin-login': ADMIN_BASE,
+        '/admin/login': ADMIN_BASE,
+        '/admin': ADMIN_BASE,
+        '/admin/': ADMIN_BASE,
+        '/admin-dashboard': ADMIN_DEFAULT_PATH,
+        '/admin/dashboard': ADMIN_DEFAULT_PATH,
+        '/manage-cars': window.TRONEX_ADMIN_MANAGE_CARS || '/admin.../manage-cars',
+        '/admin/manage-cars': window.TRONEX_ADMIN_MANAGE_CARS || '/admin.../manage-cars',
+    };
+    if (legacy[path]) {
+        return legacy[path];
+    }
+    if (path.indexOf('/admin-login?') === 0) {
+        return ADMIN_BASE;
+    }
+    return path;
+}
+
+function isAllowedAdminNextPath(path) {
+    return path === ADMIN_BASE || path.startsWith(ADMIN_BASE + '/');
+}
+
 function safeNextPath(raw) {
-    if (!raw || typeof raw !== 'string') return '/admin-dashboard';
+    if (!raw || typeof raw !== 'string') return ADMIN_DEFAULT_PATH;
     var trimmed = raw.split('#')[0];
-    if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return '/admin-dashboard';
+    if (!trimmed.startsWith('/') || trimmed.startsWith('//')) return ADMIN_DEFAULT_PATH;
 
     var base = typeof tronexBase === 'function' ? tronexBase() : '';
     if (base && trimmed.indexOf(base + '/') === 0) {
-        trimmed = trimmed.slice(base.length) || '/admin-dashboard';
+        trimmed = trimmed.slice(base.length) || ADMIN_DEFAULT_PATH;
     } else if (trimmed === base) {
-        trimmed = '/admin-dashboard';
+        trimmed = ADMIN_DEFAULT_PATH;
     }
 
-    if (trimmed === '/admin-login' || trimmed.indexOf('/admin-login?') === 0) {
-        return '/admin-dashboard';
+    trimmed = mapLegacyAdminPath(trimmed);
+
+    if (trimmed === ADMIN_BASE || trimmed === ADMIN_BASE + '/') {
+        return ADMIN_DEFAULT_PATH;
+    }
+    if (!isAllowedAdminNextPath(trimmed)) {
+        return ADMIN_DEFAULT_PATH;
     }
     return trimmed;
 }
@@ -46,9 +78,25 @@ function isAdminToken(token) {
     }
 }
 
+function persistAdminSession(token) {
+    localStorage.setItem('adminToken', token);
+    try {
+        var maxAge = 60 * 60 * 8;
+        document.cookie = 'tronex_admin_token=' + encodeURIComponent(token) + '; Max-Age=' + maxAge + '; Path=/; SameSite=Lax';
+    } catch (_) {}
+}
+
+function clearAdminSession() {
+    localStorage.removeItem('adminToken');
+    try {
+        document.cookie = 'tronex_admin_token=; Max-Age=0; Path=/; SameSite=Lax';
+    } catch (_) {}
+}
+
 (function redirectIfAlreadyLoggedIn() {
     var token = normalizeToken(localStorage.getItem('adminToken'));
     if (!isAdminToken(token)) return;
+    persistAdminSession(token);
     var next = safeNextPath(new URLSearchParams(window.location.search).get('next'));
     var base = typeof tronexBase === 'function' ? tronexBase() : '';
     var target = typeof tronexUrl === 'function' ? tronexUrl(next) : (base + next);
@@ -79,7 +127,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         const result = await response.json().catch(() => ({}));
 
         if (response.ok && result.success && result.token) {
-            localStorage.setItem('adminToken', result.token);
+            persistAdminSession(result.token);
 
             const next = safeNextPath(new URLSearchParams(window.location.search).get('next'));
             successMessage.textContent = '✅ Login successful! Redirecting...';

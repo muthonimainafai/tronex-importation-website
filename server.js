@@ -448,15 +448,28 @@ app.post('/api/contact', async (req, res) => {
   }
 });
 
-// Admin login route
-app.get('/admin-login', (req, res) => {
+// Admin routes (under /admin.../* — literal three dots in the path)
+const ADMIN_BASE = '/admin...';
+
+app.get(ADMIN_BASE, (req, res) => {
   res.render('admin-login');
 });
 
-// When someone visits /admin directly, always send them to login
-app.get('/admin', (req, res) => {
-  res.redirect('/admin-login');
+app.get(`${ADMIN_BASE}/dashboard`, (req, res) => {
+  res.render('admin');
 });
+
+app.get(`${ADMIN_BASE}/manage-cars`, (req, res) => {
+  res.render('manage-cars');
+});
+
+app.get(['/admin', '/admin/login', '/admin-login'], (req, res) => res.redirect(301, ADMIN_BASE));
+app.get(['/admin-dashboard', '/admin/dashboard'], (req, res) =>
+  res.redirect(301, `${ADMIN_BASE}?next=${encodeURIComponent(`${ADMIN_BASE}/dashboard`)}`)
+);
+app.get(['/manage-cars', '/admin/manage-cars'], (req, res) =>
+  res.redirect(301, `${ADMIN_BASE}?next=${encodeURIComponent(`${ADMIN_BASE}/manage-cars`)}`)
+);
 
 // Admin login API — returns signed JWT (store as adminToken; send Authorization on admin requests)
 app.post('/api/admin/login', (req, res) => {
@@ -478,15 +491,6 @@ app.post('/api/admin/login', (req, res) => {
   return res.json({ success: true, message: 'Login successful', token });
 });
 
-// Admin dashboard page (actual admin UI)
-app.get('/admin-dashboard', (req, res) => {
-  res.render('admin');
-});
-
-// Manage cars route
-app.get('/manage-cars', (req, res) => {
-  res.render('manage-cars');
-});
 
 //=====================CAR API ROUTES======================
 //Get all cars(for users side)

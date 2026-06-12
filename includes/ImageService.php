@@ -85,7 +85,8 @@ final class ImageService
         }
 
         $dir = self::carsUploadDir();
-        $name = 'car-' . time() . '-' . random_int(100000000, 999999999) . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
+        $stamp = str_replace('.', '', (string) microtime(true));
+        $name = 'car-' . $stamp . '-' . random_int(100000000, 999999999) . '.' . pathinfo($file['name'], PATHINFO_EXTENSION);
         $dest = $dir . '/' . $name;
         if (!move_uploaded_file($file['tmp_name'], $dest)) {
             throw new \RuntimeException('Failed to save upload');

@@ -16,8 +16,20 @@ function adminAuthHeaders() {
     return t ? { Authorization: 'Bearer ' + t } : {};
 }
 
-function redirectToAdminLogin() {
+function clearAdminSession() {
     localStorage.removeItem('adminToken');
+    try {
+        document.cookie = 'tronex_admin_token=; Max-Age=0; Path=/; SameSite=Lax';
+    } catch (_) {}
+}
+
+function handleAdminLogout() {
+    clearAdminSession();
+    window.location.href = typeof tronexUrl === 'function' ? tronexUrl('/') : '/';
+}
+
+function redirectToAdminLogin() {
+    clearAdminSession();
     var path = window.location.pathname || '/';
     var search = window.location.search || '';
     var base = typeof tronexBase === 'function' ? tronexBase() : '';
@@ -26,8 +38,8 @@ function redirectToAdminLogin() {
     }
     var next = path + search;
     window.location.href = typeof tronexUrl === 'function'
-        ? tronexUrl('/admin-login?next=' + encodeURIComponent(next))
-        : (base || '') + '/admin-login?next=' + encodeURIComponent(next);
+        ? tronexUrl((window.TRONEX_ADMIN_LOGIN || '/admin...') + '?next=' + encodeURIComponent(next))
+        : (base || '') + (window.TRONEX_ADMIN_LOGIN || '/admin...') + '?next=' + encodeURIComponent(next);
 }
 
 async function adminFetch(url, options = {}) {
@@ -106,7 +118,6 @@ const INVOICE_FIELDS = [
     'mssLevy',
     'clearingServiceCharge',
     'kgPlate',
-    'ntsaSticker',
     'handlingCosts',
     'dutyPayable',
     'discount'
@@ -120,6 +131,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Setup event listeners
 function setupEventListeners() {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.addEventListener('click', handleAdminLogout);
+    }
+
     // Add new car button
     document.getElementById('addNewBtn').addEventListener('click', openAddModal);
 
@@ -240,7 +256,6 @@ function getInvoiceTotalFromCosts(invoiceCosts) {
         'mssLevy',
         'clearingServiceCharge',
         'kgPlate',
-        'ntsaSticker',
         'handlingCosts'
     ];
 
@@ -271,7 +286,6 @@ function recomputeInvoiceTotals() {
         'mssLevy',
         'clearingServiceCharge',
         'kgPlate',
-        'ntsaSticker',
         'handlingCosts'
     ].reduce((sum, k) => sum + (Number(costs[k]) || 0), 0);
 
@@ -312,6 +326,28 @@ function initImageUpload() {
     uploadWrapper.addEventListener('dragover', handleDragOver);
     uploadWrapper.addEventListener('dragleave', handleDragLeave);
     uploadWrapper.addEventListener('drop', handleDrop);
+
+    const previewContainer = document.getElementById('imagePreviewContainer');
+    if (previewContainer && !previewContainer.dataset.actionsBound) {
+        previewContainer.dataset.actionsBound = '1';
+        previewContainer.addEventListener('click', (e) => {
+            const mainBtn = e.target.closest('.btn-set-main');
+            const delBtn = e.target.closest('.btn-delete-image');
+            if (mainBtn && !mainBtn.disabled) {
+                e.preventDefault();
+                e.stopPropagation();
+                const idx = Number(mainBtn.dataset.index);
+                if (uploadedImages[idx]) setMainImage(uploadedImages[idx].url);
+                return;
+            }
+            if (delBtn) {
+                e.preventDefault();
+                e.stopPropagation();
+                const idx = Number(delBtn.dataset.index);
+                if (uploadedImages[idx]) deleteImage(uploadedImages[idx].filename);
+            }
+        });
+    }
 }
 
 function handleDragOver(e) {
@@ -340,8 +376,9 @@ function handleImageSelect(e) {
     uploadImages(files);
 }
 
-async function uploadImages(files) {
-    if (!files || files.length === 0) return;
+async function uploadImages(fileList) {
+    const files = Array.from(fileList || []).filter((f) => f && String(f.type || '').startsWith('image/'));
+    if (files.length === 0) return;
 
     console.log('📸 [IMAGE UPLOAD] Starting upload of', files.length, 'files');
 
@@ -350,47 +387,71 @@ async function uploadImages(files) {
         return;
     }
 
-    const formData = new FormData();
-    for (const file of files) {
-        formData.append('images', file);
-    }
-
     const progressDiv = document.querySelector('.image-upload-progress');
     const progressFill = document.querySelector('.progress-fill');
     const uploadStatus = document.getElementById('uploadStatus');
 
     if (progressDiv) progressDiv.classList.add('active');
-    if (progressFill) progressFill.style.width = '30%';
-    if (uploadStatus) uploadStatus.textContent = 'Uploading...';
+    if (progressFill) progressFill.style.width = '5%';
+    if (uploadStatus) uploadStatus.textContent = 'Uploading 0/' + files.length + '...';
+
+    const uploadedBatch = [];
+    const failedNames = [];
 
     try {
-        const response = await adminFetch('/api/upload/images', {
-            method: 'POST',
-            body: formData
-        });
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            if (uploadStatus) uploadStatus.textContent = 'Uploading ' + (i + 1) + '/' + files.length + '...';
+            if (progressFill) {
+                progressFill.style.width = Math.round(((i + 0.5) / files.length) * 100) + '%';
+            }
 
-        let result = {};
-        try {
-            result = await response.json();
-        } catch (parseErr) {
-            console.error('Upload response parse error:', parseErr);
+            const formData = new FormData();
+            formData.append('image', file);
+
+            let response;
+            try {
+                response = await adminFetch('/api/upload/image', {
+                    method: 'POST',
+                    body: formData
+                });
+            } catch (networkErr) {
+                failedNames.push(file.name);
+                continue;
+            }
+
+            let result = {};
+            try {
+                result = await response.json();
+            } catch (parseErr) {
+                console.error('Upload response parse error:', parseErr);
+            }
+
+            if (response.ok && result.success && result.data) {
+                uploadedBatch.push(result.data);
+            } else {
+                failedNames.push(file.name + (result.message ? ' (' + result.message + ')' : ''));
+            }
         }
 
-        if (response.ok && result.success && Array.isArray(result.data)) {
-            uploadedImages.push(...result.data);
-            if (!mainImageUrl && result.data[0]?.url) {
-                mainImageUrl = result.data[0].url;
+        if (uploadedBatch.length > 0) {
+            uploadedImages.push(...uploadedBatch);
+            if (!mainImageUrl && uploadedBatch[0]?.url) {
+                mainImageUrl = uploadedBatch[0].url;
             }
             displayImagePreviews();
             updateMainImageSelect();
             saveImageData();
-            showToast('✅ ' + result.data.length + ' image(s) uploaded successfully!', 'success');
+            showToast('✅ ' + uploadedBatch.length + ' image(s) uploaded successfully!', 'success');
             if (uploadStatus) uploadStatus.textContent = 'Upload complete!';
             if (progressFill) progressFill.style.width = '100%';
         } else {
-            const msg = result.message || ('Upload failed (' + response.status + ')');
-            showToast('❌ ' + msg, 'error');
+            showToast('❌ No images were uploaded', 'error');
             if (uploadStatus) uploadStatus.textContent = 'Upload failed!';
+        }
+
+        if (failedNames.length > 0) {
+            showToast('⚠️ Some files failed: ' + failedNames.slice(0, 3).join(', '), 'error');
         }
     } catch (error) {
         console.error('❌ Upload error:', error);
@@ -421,22 +482,25 @@ function displayImagePreviews() {
         return;
     }
 
-    container.innerHTML = uploadedImages.map((img, index) => `
-        <div class="image-preview-item ${img.url === mainImageUrl ? 'main-image' : ''}">
-            <img src="${assetUrl(img.url)}" alt="Car image ${index + 1}" onerror="this.src='${assetUrl('/images/placeholder-car.svg')}'">
-            <div class="image-preview-overlay">
-                <div class="image-preview-actions">
-                    <button type="button" class="btn-set-main" title="Set as main image" onclick="setMainImage('${img.url}')">
-                        <i class="fas fa-star"></i> Main
-                    </button>
-                    <button type="button" class="btn-delete-image" title="Delete image" onclick="deleteImage('${img.filename}')">
-                        <i class="fas fa-trash"></i> Delete
-                    </button>
-                </div>
+    container.innerHTML = uploadedImages.map((img, index) => {
+        const isMain = img.url === mainImageUrl;
+        return `
+        <div class="image-preview-item ${isMain ? 'main-image' : ''}">
+            <div class="image-preview-media">
+                <img src="${assetUrl(img.url)}" alt="Car image ${index + 1}" onerror="this.src='${assetUrl('/images/placeholder-car.svg')}'">
+                <span class="image-main-badge"><i class="fas fa-star"></i> MAIN</span>
+                <span class="image-preview-index">${index + 1}/${uploadedImages.length}</span>
             </div>
-            <div class="image-info">${index + 1}/${uploadedImages.length}</div>
-        </div>
-    `).join('');
+            <div class="image-preview-actions">
+                <button type="button" class="btn-set-main" data-index="${index}" title="Set as main image"${isMain ? ' disabled' : ''}>
+                    <i class="fas fa-star"></i> Main
+                </button>
+                <button type="button" class="btn-delete-image" data-index="${index}" title="Delete image">
+                    <i class="fas fa-trash"></i> Delete
+                </button>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 function setMainImage(imageUrl) {
@@ -560,10 +624,12 @@ async function loadCars() {
             filteredCars = [...allCars];
             displayCars();
             updateStats();
+        } else {
+            showToast('❌ ' + (result.message || 'Could not load vehicles'), 'error');
         }
     } catch (error) {
         console.error('❌ Error loading cars:', error);
-        showToast('Error loading cars', 'error');
+        showToast('❌ Error loading cars: ' + error.message, 'error');
     }
 }
 
@@ -742,10 +808,59 @@ async function saveCar(e) {
 
     const make = document.getElementById('make').value.trim();
     const model = document.getElementById('model').value.trim();
+    const availability = document.getElementById('availability').value;
+    const fuel = document.getElementById('fuel').value;
+    const transmission = document.getElementById('transmission').value;
+    const drive = document.getElementById('drive').value;
+    const vehicleType = document.getElementById('type').value;
+    const color = document.getElementById('color').value.trim();
+    const description = document.getElementById('description').value.trim();
+    const yearVal = document.getElementById('year').value;
+    const priceVal = document.getElementById('price').value;
+    const mileageVal = document.getElementById('mileage').value;
 
-    // Validate required fields
     if (!make || !model) {
         showToast('❌ Make and Model are required', 'error');
+        return;
+    }
+    if (!vehicleType) {
+        showToast('❌ Please select a vehicle type', 'error');
+        return;
+    }
+    if (!availability) {
+        showToast('❌ Please select a status (Available, Reserved, or Sold)', 'error');
+        return;
+    }
+    if (!fuel) {
+        showToast('❌ Please select a fuel type', 'error');
+        return;
+    }
+    if (!transmission) {
+        showToast('❌ Please select a transmission', 'error');
+        return;
+    }
+    if (!drive) {
+        showToast('❌ Please select a drive type', 'error');
+        return;
+    }
+    if (!color) {
+        showToast('❌ Exterior color is required', 'error');
+        return;
+    }
+    if (!description) {
+        showToast('❌ Description is required', 'error');
+        return;
+    }
+    if (!yearVal || !Number.isFinite(parseInt(yearVal, 10))) {
+        showToast('❌ Please enter a valid year', 'error');
+        return;
+    }
+    if (numOrNull(priceVal) === null) {
+        showToast('❌ Please enter a valid price', 'error');
+        return;
+    }
+    if (numOrNull(mileageVal) === null) {
+        showToast('❌ Please enter a valid mileage', 'error');
         return;
     }
 
@@ -760,22 +875,22 @@ async function saveCar(e) {
         
         // Pricing & Availability
         price: numOrNull(document.getElementById('price').value),
-        availability: document.getElementById('availability').value,
+        availability: availability,
         
         // Physical specs
-        type: document.getElementById('type').value,
+        type: vehicleType,
         bodyType: document.getElementById('bodyType').value || '',
-        color: document.getElementById('color').value,
+        color: color,
         interiorColor: document.getElementById('interiorColor').value || '',
         doors: parseInt(document.getElementById('doors').value) || 4,
         seats: parseInt(document.getElementById('seats').value) || 5,
         
         // Engine & transmission
         mileage: numOrNull(document.getElementById('mileage').value),
-        transmission: document.getElementById('transmission').value,
-        fuel: document.getElementById('fuel').value,
+        transmission: transmission,
+        fuel: fuel,
         engineCapacity: document.getElementById('engineCapacity').value || '',
-        drive: document.getElementById('drive').value,
+        drive: drive,
         
         // Vehicle dimensions
         trunk: document.getElementById('trunk').value || '',
@@ -784,7 +899,7 @@ async function saveCar(e) {
         registration: document.getElementById('registration').value || '',
         
         // Description & details
-        description: document.getElementById('description').value,
+        description: description,
         highlights: document.getElementById('highlights').value
             .split(',')
             .map(h => h.trim())
@@ -816,7 +931,6 @@ async function saveCar(e) {
             mssLevy: numOrNull(document.getElementById('inv_mssLevy')?.value),
             clearingServiceCharge: numOrNull(document.getElementById('inv_clearingServiceCharge')?.value),
             kgPlate: numOrNull(document.getElementById('inv_kgPlate')?.value),
-            ntsaSticker: numOrNull(document.getElementById('inv_ntsaSticker')?.value),
             handlingCosts: numOrNull(document.getElementById('inv_handlingCosts')?.value),
             dutyPayable: numOrNull(document.getElementById('inv_dutyPayable')?.value),
             discount: numOrNull(document.getElementById('inv_discount')?.value)

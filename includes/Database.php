@@ -31,8 +31,9 @@ final class Database
                 PDO::ATTR_EMULATE_PREPARES => false,
             ]);
         } catch (PDOException $e) {
+            $hint = 'Check DB_HOST, DB_NAME, DB_USER, and DB_PASS in .env (use the full names from your hosting panel, often with a prefix like username_dbname).';
             if (Config::isProduction()) {
-                throw new \RuntimeException('Database connection failed.');
+                throw new \RuntimeException('Database connection failed. ' . $hint, 0, $e);
             }
             throw $e;
         }

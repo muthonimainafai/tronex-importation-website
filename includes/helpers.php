@@ -97,8 +97,11 @@ function apply_app_base_to_html(string $html): string
         return $html;
     }
     $prefix = rtrim($base, '/') . '/';
+    $baseSegment = preg_quote(ltrim($base, '/'), '#');
+    // Skip paths that already include the app base (avoids double-prefixing).
+    $skipBase = $baseSegment !== '' ? '(?!' . $baseSegment . '(?:/|$))' : '';
     return preg_replace(
-        '#\b(href|src|action)=(["\'])/(?!/)#',
+        '#\b(href|src|action)=(["\'])/(?!/)' . $skipBase . '#',
         '$1=$2' . $prefix,
         $html
     ) ?? $html;
@@ -155,12 +158,13 @@ function tronex_public_nav_html(): string
         return tronex_public_nav_link_class($path, $cur);
     };
 
-    $u = static fn(string $path): string => e(url_path($path));
-    $contactHref = e(url_path('/') . '#site-footer');
+    // Root-relative paths; finalize_tronex_html() applies the subdirectory prefix once.
+    $u = static fn(string $path): string => e(html_root_path($path));
+    $contactHref = e(html_root_path('/')) . '#site-footer';
     $logoPath = tronex_brand_logo_path();
     $logoFile = dirname(__DIR__) . '/public' . $logoPath;
     $logoVer = is_file($logoFile) ? (string) filemtime($logoFile) : '1';
-    $logoSrc = e(url_path($logoPath)) . '?v=' . e($logoVer);
+    $logoSrc = e(html_root_path($logoPath)) . '?v=' . e($logoVer);
 
     return '<nav class="navbar tronex-public-nav" aria-label="Main navigation">'
         . '<div class="nav-container">'
@@ -200,6 +204,42 @@ function finalize_tronex_html(string $html): string
     $html = inject_tronex_public_nav($html);
     $html = apply_app_base_to_html($html);
     return inject_tronex_head_assets($html);
+}
+
+/**
+ * Normalize $_FILES entry for one or many uploads (supports images[] and repeated field names).
+ *
+ * @return list<array{name: string, type: string, tmp_name: string, error: int, size: int}>
+ */
+function normalize_uploaded_files(string $field): array
+{
+    if (empty($_FILES[$field])) {
+        return [];
+    }
+
+    $entry = $_FILES[$field];
+    if (!is_array($entry['name'] ?? null)) {
+        return [[
+            'name' => (string) ($entry['name'] ?? ''),
+            'type' => (string) ($entry['type'] ?? ''),
+            'tmp_name' => (string) ($entry['tmp_name'] ?? ''),
+            'error' => (int) ($entry['error'] ?? UPLOAD_ERR_NO_FILE),
+            'size' => (int) ($entry['size'] ?? 0),
+        ]];
+    }
+
+    $out = [];
+    $count = count($entry['name']);
+    for ($i = 0; $i < $count; $i++) {
+        $out[] = [
+            'name' => (string) ($entry['name'][$i] ?? ''),
+            'type' => (string) ($entry['type'][$i] ?? ''),
+            'tmp_name' => (string) ($entry['tmp_name'][$i] ?? ''),
+            'error' => (int) ($entry['error'][$i] ?? UPLOAD_ERR_NO_FILE),
+            'size' => (int) ($entry['size'][$i] ?? 0),
+        ];
+    }
+    return $out;
 }
 
 function request_method(): string
@@ -374,5 +414,22 @@ function encode_json_column(mixed $data): ?string
     if ($data === null) {
         return null;
     }
-    return json_encode($data, JSON_UNESCAPED_UNICODE);
+    $encoded = json_encode($data, JSON_UNESCAPED_UNICODE);
+    if ($encoded === false) {
+        return is_array($data) ? '[]' : 'null';
+    }
+    return $encoded;
+}
+
+function sanitize_car_availability(mixed $value): string
+{
+    $allowed = ['Available', 'Reserved', 'Sold'];
+    $v = trim((string) ($value ?? ''));
+    return in_array($v, $allowed, true) ? $v : 'Available';
+}
+
+function sanitize_car_select(mixed $value, string $default): string
+{
+    $v = trim((string) ($value ?? ''));
+    return $v !== '' ? $v : $default;
 }
